@@ -1,0 +1,19 @@
+// Generated Code - Do Not Edit
+package todo
+
+
+{{ range .Package | getCobraAdaptors }}
+var adaptor{{ .Name }} func({{.InTypeName}}) {{.OutTypeName}}
+
+func RegisterAdaptor{{ .Name }}(f func({{.InTypeName}}) {{.OutTypeName}}) {
+    adaptor{{ .Name }} = f
+}
+{{- end }}
+
+var defaultAdaptors map[string]func(any) any
+
+func RegisterAdaptor(adaptors ...func(any) any) {
+  for _, adaptor := range adaptors {
+    defaultAdaptors = append(defaultAdaptors, adaptor)
+  }
+}

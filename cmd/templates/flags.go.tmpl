@@ -1,0 +1,55 @@
+// Generated Code - Do Not Edit
+package todo
+
+import (
+    {{- range $import := .Struct.Fields | onlyCobraFlags | getImports }}
+    {{ $import }}
+    {{- end }}
+)
+
+type {{ .Struct.Name }} struct {
+    {{- range .Struct.Fields }}
+    {{ .Name }} {{ .TypeName }}{{. | getCobraTags }}
+    {{- end }}
+}
+
+// Add{{ .Struct.Name }}Flags adds flags for Config to the cobra command
+func Add{{ .Struct.Name }}Flags(cmd *cobra.Command) {
+{{- range $f := .Struct.Fields | onlyCobraFlags }}
+	{{ $f | asCobraFlag }}
+{{- end }}
+}
+
+type {{ .Struct.Name }}Options struct {
+    Adaptors map[string]func(any) any
+    {{- range .Struct.Fields | onlyCobraOptions }}
+    {{ if .IsPointer }}
+    {{ .Name }} {{ .TypeName }}
+    {{- else -}}
+    {{ .Name }} *{{ .TypeName }}
+    {{- end -}}
+    {{- end }}
+}
+
+func (c *{{ .Struct.Name }}) To{{ .Struct.Name }}(opts ...*{{.Struct.Name }}Options) *{{ .Package.Name }}.{{ .Struct.Name }} {
+    r := &{{ .Package.Name }}.{{ .Struct.Name }} {
+        {{- range $f := .Struct.Fields }}
+        {{$f.Name}}: c.{{ $f.Name }},
+        {{- end }}
+    }
+
+    for i := range opts {
+      {{- range .Struct.Fields | onlyCobraOptions }}
+      if opts[i].{{ .Name }} != nil {
+          {{ if .IsPointer }}
+      r.{{ .Name }} = opts[i].{{ .Name }}
+          {{- else -}}
+      r.{{ .Name }} = *opts[i].{{ .Name }}
+          {{- end }}
+      }
+      {{- end }}
+
+    }
+
+    return r
+}

@@ -9,6 +9,7 @@
 *.dylib
 gen-cobra-flags
 example/demo/demo
+.idea/*
 
 # Test binary, built with `go test -c`
 *.test

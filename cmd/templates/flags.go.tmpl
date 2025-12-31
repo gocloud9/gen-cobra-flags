@@ -1,27 +1,28 @@
-// Generated Code - Do Not Edit
-package todo
+// Generated Code with gen-cobra-flags - Do Not Edit
+package {{ .Custom.DestinationPackage }}
 
 import (
     {{- range $import := .Struct.Fields | onlyCobraFlags | getImports }}
     {{ $import }}
     {{- end }}
+    "github.com/spf13/cobra"
 )
 
-type {{ .Struct.Name }} struct {
+type {{ .Struct.Name }}Config struct {
     {{- range .Struct.Fields }}
-    {{ .Name }} {{ .TypeName }}{{. | getCobraTags }}
+    {{ .Name }} {{ .| fieldToConfigTypeName}}{{. | getCobraTags }}
     {{- end }}
 }
 
 // Add{{ .Struct.Name }}Flags adds flags for Config to the cobra command
 func Add{{ .Struct.Name }}Flags(cmd *cobra.Command) {
+    cmd.Flags().{{ .Struct | structToFlagMethod}}
 {{- range $f := .Struct.Fields | onlyCobraFlags }}
-	{{ $f | asCobraFlag }}
+    cmd.Flags().{{ $f | fieldToFlagMethod }}
 {{- end }}
 }
 
 type {{ .Struct.Name }}Options struct {
-    Adaptors map[string]func(any) any
     {{- range .Struct.Fields | onlyCobraOptions }}
     {{ if .IsPointer }}
     {{ .Name }} {{ .TypeName }}
@@ -31,12 +32,41 @@ type {{ .Struct.Name }}Options struct {
     {{- end }}
 }
 
-func (c *{{ .Struct.Name }}) To{{ .Struct.Name }}(opts ...*{{.Struct.Name }}Options) *{{ .Package.Name }}.{{ .Struct.Name }} {
-    r := &{{ .Package.Name }}.{{ .Struct.Name }} {
-        {{- range $f := .Struct.Fields }}
-        {{$f.Name}}: c.{{ $f.Name }},
-        {{- end }}
+func {{ .Struct.Name }}ConfigFromFlags(cmd *cobra.Command) (*{{ .Struct.Name }}Config, error) {
+    cin, err := cmd.Flags().{{ .Struct | structToFlagGetMethod }}
+    if err != nil {
+        return nil, fmt.Errorf("getting {{ .Struct.Name }} config from flags: %w", err)
     }
+
+    c, err := {{ .Struct | structToFlagAdaptorName }}([]byte(cin))
+    if err != nil {
+        return nil, fmt.Errorf("adapting {{ .Struct.Name }} config from flags: %w", err)
+    }
+
+
+    {{- range $f := .Struct.Fields | onlyCobraFlags }}
+    c.{{$f.Name}}, err = cmd.Flags().{{ $f | fieldToFlagGetMethod }}
+    if err != nil {
+        return nil, fmt.Errorf("getting flag {{$f.Name}}: %w", err)
+    }
+    {{ end }}
+    return &c, nil
+}
+
+func (c *{{ .Struct.Name }}Config) To{{ .Struct.Name }}(opts ...*{{.Struct.Name }}Options) (*{{ .Package.Name }}.{{ .Struct.Name }}, error){
+    r := &{{ .Package.Name }}.{{ .Struct.Name }}{}
+
+    var err error
+    {{- range $f := .Struct.Fields }}
+    {{ if $f | needsConfigAdaptor }}
+    r.{{$f.Name}}, err = {{$f | asConfigAdaptorName}}(c.{{ $f.Name }})
+    if err != nil {
+        return nil, fmt.Errorf("adapting field {{$f.Name}}: %w", err)
+    }
+    {{ else }}
+    r.{{$f.Name}} = c.{{ $f.Name }}
+    {{ end }}
+    {{- end }}
 
     for i := range opts {
       {{- range .Struct.Fields | onlyCobraOptions }}
@@ -48,8 +78,7 @@ func (c *{{ .Struct.Name }}) To{{ .Struct.Name }}(opts ...*{{.Struct.Name }}Opti
           {{- end }}
       }
       {{- end }}
-
     }
 
-    return r
+    return r, nil
 }

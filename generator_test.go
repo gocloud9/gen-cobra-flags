@@ -11,8 +11,8 @@ func TestGenerateFlags(t *testing.T) {
 	testInput := `package test
 
 type TestConfig struct {
-	Name string ` + "`" + `flag:"name" short:"n" usage:"Test name" default:"test"` + "`" + `
-	Count int ` + "`" + `flag:"count" short:"c" usage:"Test count" default:"10"` + "`" + `
+	Name string ` + "`" + `flag:"name" short:"n" usage:"Test name" defaults:"test"` + "`" + `
+	Count int ` + "`" + `flag:"count" short:"c" usage:"Test count" defaults:"10"` + "`" + `
 	Enabled bool ` + "`" + `flag:"enabled" short:"e" usage:"Enable feature"` + "`" + `
 }
 `

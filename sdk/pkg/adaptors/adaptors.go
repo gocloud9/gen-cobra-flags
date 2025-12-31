@@ -1,11 +1,25 @@
 package adaptors
 
 import (
+	"encoding/json"
 	"fmt"
+	"go.yaml.in/yaml/v3"
 	"net"
 	"regexp"
 	"time"
 )
+
+func JsonOrYamlToStruct[T any](data []byte) (T, error) {
+	var t T
+
+	if json.Valid(data) {
+		err := json.Unmarshal(data, t)
+		return t, err
+	}
+
+	err := yaml.Unmarshal(data, t)
+	return t, err
+}
 
 func IPToString(ip net.IP) (string, error) {
 	return ip.String(), nil
@@ -202,6 +216,12 @@ func GetFuncNameByTypeNames(typeNameIn, typeNameOut string) string {
 			"uint*":  "IntegerToInteger",
 			"float*": "IntegerToFloat",
 		},
+		"float*": {
+			"string": "FloatToString",
+			"float*": "FloatToFloat",
+			"int*":   "FloatToInteger",
+			"uint*":  "FloatToInteger",
+		},
 	}
 
 	inMap, ok := funcMap[convertToWildcardType(typeNameIn)]
@@ -218,15 +238,15 @@ func GetFuncNameByTypeNames(typeNameIn, typeNameOut string) string {
 }
 
 func convertToWildcardType(typeName string) string {
-	if regexp.MustCompile("int[0-9]+").MatchString(typeName) {
+	if regexp.MustCompile("int(|[0-9]+)").MatchString(typeName) {
 		return "int*"
 	}
 
-	if regexp.MustCompile("uint[0-9]+").MatchString(typeName) {
+	if regexp.MustCompile("uint(|[0-9]+)").MatchString(typeName) {
 		return "uint*"
 	}
 
-	if regexp.MustCompile("float[0-9]+").MatchString(typeName) {
+	if regexp.MustCompile("float(|[0-9]+)").MatchString(typeName) {
 		return "float*"
 	}
 

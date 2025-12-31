@@ -3,16 +3,23 @@ package main
 import (
 	"embed"
 	"fmt"
-	"github.com/gocloud9/gen-tool/pkg/generate"
-	"github.com/gocloud9/gen-tool/pkg/parse"
+	"github.com/gocloud9/gen-cobra-flags/sdk/pkg/adaptors"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"text/template"
+
+	"github.com/gocloud9/gen-tool/pkg/generate"
+	"github.com/gocloud9/gen-tool/pkg/parse"
 )
 
 //go:embed templates/*
 var fs embed.FS
+
+type Input struct {
+	DestinationPackage string
+}
 
 func main() {
 
@@ -21,45 +28,53 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	results, err := parser.ParseDirectory(filepath.Join(cw, "example/"))
+	results, err := parser.ParseDirectory(parse.Options{
+		Path: filepath.Join(cw, "example/"),
+		SkipFilesWithContentsRegex: []*regexp.Regexp{
+			regexp.MustCompile("Generated Code with gen-cobra-flags - Do Not Edit"),
+		},
+	})
 	if err != nil {
 		panic(err)
 	}
 
-	err = generate.Execute(results, generate.Options{
+	err = generate.ExecuteWithCustom(results, generate.OptionsWithCustom[Input]{
+		CustomInput: Input{
+			DestinationPackage: "generated",
+		},
 		EmdedFS: []embed.FS{fs},
 		Files: generate.Files{
 			{
 				TemplatePath:    "templates/flags.go.tmpl",
-				DestinationPath: "{{.Struct.Name}}_gen.go",
+				DestinationPath: "example/generated/{{.Struct.Name | toSnakeCase }}_gen.go",
 				Type:            generate.PerStruct,
 				//FormatSource:    true,
 			},
 			{
 				TemplatePath:    "templates/shared.go.tmpl",
-				DestinationPath: "{{.Package.Name}}_gen_shared.go",
-				Type:            generate.PerPackage,
+				DestinationPath: "example/generated/shared.go",
+				Type:            generate.Global,
 			},
 		},
+
 		TemplateFuncMap: template.FuncMap{
-			"asCobraFlag": func(field *parse.FieldInfo) string {
-				typeName := field.TypeName
-				cobraType, ok := field.Markers["+cobra:type"]
-				if !ok {
-					cobraType = GoToCobraType(typeName)
+			"toRegisterMethod": func(f *AdaptorInfo) string {
+				return fmt.Sprintf("Register%s%s", strings.ToUpper(f.Name)[:1], f.Name[1:])
+			},
+			"fieldToFlagMethod": func(f *parse.FieldInfo) string {
+				field := (*Field)(f)
+
+				if field.TypeName == "time.Time" {
+					return fmt.Sprintf("%sP(\"%s\", \"%s\", %s, []string{time.RFC3339}, \"%s\")", field.flagType(), field.flag(), field.Short(), field.Default(), field.Usage())
 				}
 
-				cobraFlag, ok := field.Markers["+cobra:flag"]
-				if !ok {
-					panic("cobra:flag is missing")
-				}
+				return fmt.Sprintf("%sP(\"%s\", \"%s\", %s, \"%s\")", field.flagType(), field.flag(), field.Short(), field.Default(), field.Usage())
 
-				cobraShort, _ := field.Markers["+cobra:short"]
-				cobraUsage, _ := field.Markers["+cobra:usage"]
-				cobraDefault, _ := field.Markers["+cobra:default"]
+			},
+			"fieldToFlagGetMethod": func(f *parse.FieldInfo) string {
+				field := (*Field)(f)
 
-				return fmt.Sprintf("cmd.Flags().%sP(\"%s\", \"%s\", %s, \"%s\")", cobraType, cobraFlag, cobraShort, cobraDefault, cobraUsage)
-
+				return fmt.Sprintf("Get%s(\"%s\")", GoToCobraType(field.TypeName), field.flag())
 			},
 			"getCobraTags": func(field *parse.FieldInfo) string {
 				tags := []string{}
@@ -87,8 +102,8 @@ func main() {
 			"onlyCobraFlags": func(in map[string]*parse.FieldInfo) map[string]*parse.FieldInfo {
 				out := map[string]*parse.FieldInfo{}
 				for i := range in {
-					_, ok := in[i].Markers["+cobra:flag"]
-					if ok {
+					field := (*Field)(in[i])
+					if field.hasFlag() {
 						out[i] = in[i]
 					}
 				}
@@ -96,22 +111,47 @@ func main() {
 				return out
 			},
 
-			"getCobraAdaptors": func(in *parse.PackageInfo) []AdaptorInfo {
-				out := []AdaptorInfo{}
-				for j := range in.Structs {
-					for k := range in.Structs[j].Fields {
-						aName, ok := in.Structs[j].Fields[k].Markers["+cobra:adaptor"]
-						if ok {
-							cobraType, ok := in.Structs[j].Fields[k].Markers["+cobra:type"]
-							if !ok {
-								cobraType = GoToCobraType(in.Structs[j].Fields[k].TypeName)
+			"getAdaptors": func(in *parse.Results) AdaptorInfoList {
+				out := AdaptorInfoList{}
+				for i := range in.Packages {
+					for j := range in.Packages[i].Structs {
+						for k := range in.Packages[i].Structs[j].Fields {
+							field := (*Field)(in.Packages[i].Structs[j].Fields[k])
+							if field.hasCustomConfigAdaptor() {
+								inType := field.configType()
+								outType := field.TypeName
+
+								a, exists := out.getByName(field.configAdaptor())
+								if exists {
+									if a.InTypeName != inType || a.OutTypeName != outType {
+										panic(fmt.Sprintf("On field %s on struct %s.%s conflicting config adaptor definitions for %s, func(%s)(%s, error) vs func(%s)(%s, error)", field.Name, in.Packages[i].Name, in.Packages[i].Structs[j].Name, field.configAdaptor(), inType, outType, a.InTypeName, a.OutTypeName))
+									}
+								}
+
+								out = append(out, AdaptorInfo{
+									Name:        field.configAdaptor(),
+									InTypeName:  inType,
+									OutTypeName: outType,
+								})
 							}
 
-							out = append(out, AdaptorInfo{
-								Name:        aName,
-								InTypeName:  cobraType,
-								OutTypeName: in.Structs[j].Fields[k].TypeName,
-							})
+							if field.hasCustomFlagAdaptor() {
+								inType := CobraToGoType(field.flagType())
+								outType := field.configType()
+
+								current, exists := out.getByName(field.flagAdaptor())
+								if exists {
+									if current.InTypeName != inType || current.OutTypeName != outType {
+										panic(fmt.Sprintf("On field %s on struct %s.%s conflicting flag adaptor definitions for %s, func(%s)(%s, error) vs func(%s)(%s, error)", field.Name, in.Packages[i].Name, in.Packages[i].Structs[j].Name, field.flagAdaptor(), inType, outType, current.InTypeName, current.OutTypeName))
+									}
+								}
+
+								out = append(out, AdaptorInfo{
+									Name:        field.flagAdaptor(),
+									InTypeName:  inType,
+									OutTypeName: outType,
+								})
+							}
 						}
 					}
 				}
@@ -141,12 +181,76 @@ func main() {
 
 				return imports
 			},
+
+			"asConfigAdaptorName": func(info *parse.FieldInfo) string {
+				field := (*Field)(info)
+
+				return field.configAdaptor()
+			},
+
+			"asFlagAdaptorName": func(info *parse.FieldInfo) string {
+				field := (*Field)(info)
+
+				return field.flagAdaptor()
+			},
+
+			"fieldToConfigTypeName": func(field *parse.FieldInfo) string {
+				f := (*Field)(field)
+
+				return f.configType()
+			},
+
+			"structToFlagAdaptorName": func(structInfo *parse.StructInfo) string {
+				s := (*Struct)(structInfo)
+
+				return s.flagAdaptor()
+			},
+
+			"structToFlagMethod": func(structInfo *parse.StructInfo) string {
+				s := (*Struct)(structInfo)
+
+				return fmt.Sprintf("StringP(\"%s\", \"%s\", %s, \"%s\")", s.flag(), s.Short(), s.Default(), s.Usage())
+			},
+
+			"structToFlagGetMethod": func(structInfo *parse.StructInfo) string {
+				s := (*Struct)(structInfo)
+
+				return fmt.Sprintf("GetString(\"%s\")", s.flag())
+			},
+
+			"needsConfigAdaptor": func(f *parse.FieldInfo) bool {
+				field := (*Field)(f)
+	
+				_, ok := field.Markers["+cobra:config:adaptor"]
+				if ok {
+					return true
+				}
+
+				return false
+			},
+
+			"toSnakeCase": func(in string) string {
+				return strings.ToLower(regexp.MustCompile("([a-z0-9])([A-Z])").ReplaceAllString(in, "${1}_${2}"))
+			},
 		},
 	})
 
 	if err != nil {
 		panic(err)
 	}
+
+}
+
+type AdaptorInfoList []AdaptorInfo
+
+func (a AdaptorInfoList) getByName(adaptorName string) (AdaptorInfo, bool) {
+	for i := range a {
+		if a[i].Name == adaptorName {
+			return a[i], true
+		}
+	}
+
+	return AdaptorInfo{}, false
 
 }
 
@@ -171,7 +275,7 @@ func GoToCobraType(typeName string) string {
 		return "Duration"
 	case "time.Time":
 		return "Time"
-	case "net.IPNet":
+	case "*net.IPNet":
 		return "IPNet"
 	case "net.IP":
 		return "IP"
@@ -186,7 +290,7 @@ func GoToCobraType(typeName string) string {
 		}
 
 		if strings.ToUpper(typeName[:1]) == typeName[:1] {
-			return "string"
+			return "String"
 		}
 
 		return strings.ToUpper(typeName[:1]) + typeName[1:]
@@ -216,4 +320,127 @@ func CobraToGoType(typeName string) string {
 
 		return strings.ToLower(typeName)
 	}
+}
+
+type Struct parse.StructInfo
+
+func (s *Struct) hasFlag() bool {
+	_, ok := s.Markers["+cobra:flag"]
+
+	return ok
+}
+
+func (s *Struct) flagAdaptor() string {
+	a, ok := s.Markers["+cobra:flag:adaptor"]
+	if ok {
+		return a
+	}
+
+	return "adaptors.JsonOrYamlToStruct[" + s.Name + "Config]"
+}
+
+func (s *Struct) flag() string {
+	cobraFlag, _ := s.Markers["+cobra:flag"]
+
+	return cobraFlag
+}
+
+func (s *Struct) Short() string {
+	cobraShort, _ := s.Markers["+cobra:short"]
+	return cobraShort
+}
+
+func (s *Struct) Usage() string {
+	cobraUsage, _ := s.Markers["+cobra:usage"]
+	return cobraUsage
+}
+
+func (s *Struct) Default() string {
+	cobraDefault, ok := s.Markers["+cobra:default"]
+	if !ok {
+		return "\"\""
+	}
+
+	return cobraDefault
+}
+
+type Field parse.FieldInfo
+
+func (f *Field) configAdaptor() string {
+	a, ok := f.Markers["+cobra:config:adaptor"]
+	if !ok {
+		inType := f.configType()
+		outType := f.TypeName
+
+		return adaptors.GetFuncNameByTypeNames(inType, outType)
+	}
+
+	return "adaptor" + a
+}
+
+func (f *Field) hasCustomConfigAdaptor() bool {
+	_, ok := f.Markers["+cobra:config:adaptor"]
+	return ok
+}
+
+func (f *Field) flagAdaptor() string {
+	a, ok := f.Markers["+cobra:flag:adaptor"]
+	if !ok {
+		inType := CobraToGoType(f.flagType())
+		outType := f.configType()
+
+		return adaptors.GetFuncNameByTypeNames(inType, outType)
+	}
+
+	return "adaptor" + a
+}
+
+func (f *Field) hasCustomFlagAdaptor() bool {
+	_, ok := f.Markers["+cobra:flag:adaptor"]
+	return ok
+}
+
+func (f *Field) flagType() string {
+	t, ok := f.Markers["+cobra:flag:type"]
+	if !ok {
+		return GoToCobraType(f.configType())
+	}
+
+	return t
+}
+
+func (f *Field) configType() string {
+	t, ok := f.Markers["+cobra:config:type"]
+	if !ok {
+		return f.TypeName
+	}
+
+	return t
+}
+
+func (f *Field) flag() string {
+	cobraFlag, _ := f.Markers["+cobra:flag"]
+
+	return cobraFlag
+}
+
+func (f *Field) hasFlag() bool {
+	_, ok := f.Markers["+cobra:flag"]
+
+	return ok
+}
+
+func (f *Field) Short() string {
+	cobraShort, _ := f.Markers["+cobra:short"]
+	return cobraShort
+}
+
+func (f *Field) Usage() string {
+	cobraUsage, _ := f.Markers["+cobra:usage"]
+	return cobraUsage
+}
+
+func (f *Field) Default() string {
+	cobraDefault, _ := f.Markers["+cobra:default"]
+	return cobraDefault
 }

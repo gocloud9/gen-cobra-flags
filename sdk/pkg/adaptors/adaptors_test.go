@@ -1,6 +1,9 @@
-package adaptors
+package adaptors_test
 
-import "testing"
+import (
+	"github.com/gocloud9/gen-cobra-flags/sdk/pkg/adaptors"
+	"testing"
+)
 
 func TestGetFuncNameByTypeNames(t *testing.T) {
 	type args struct {
@@ -48,7 +51,7 @@ func TestGetFuncNameByTypeNames(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetFuncNameByTypeNames(tt.args.typeNameIn, tt.args.TypeNameOut); got != tt.want {
+			if got := adaptors.GetFuncNameByTypeNames(tt.args.typeNameIn, tt.args.TypeNameOut); got != tt.want {
 				t.Errorf("GetFuncNameByTypeNames() = %v, want %v", got, tt.want)
 			}
 		})

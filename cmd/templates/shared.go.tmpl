@@ -1,19 +1,12 @@
-// Generated Code - Do Not Edit
-package todo
+// Generated Code with gen-cobra-flags - Do Not Edit
+package {{ .Custom.DestinationPackage }}
 
 
-{{ range .Package | getCobraAdaptors }}
-var adaptor{{ .Name }} func({{.InTypeName}}) {{.OutTypeName}}
+{{ range .Results | getAdaptors -}}
+var {{ .Name }} func({{.InTypeName}}) ({{.OutTypeName}}, error)
 
-func RegisterAdaptor{{ .Name }}(f func({{.InTypeName}}) {{.OutTypeName}}) {
-    adaptor{{ .Name }} = f
+func {{ . | toRegisterMethod }}(f func({{.InTypeName}}) ({{.OutTypeName}}, error)) {
+    {{ .Name }} = f
 }
-{{- end }}
 
-var defaultAdaptors map[string]func(any) any
-
-func RegisterAdaptor(adaptors ...func(any) any) {
-  for _, adaptor := range adaptors {
-    defaultAdaptors = append(defaultAdaptors, adaptor)
-  }
-}
+{{ end -}}

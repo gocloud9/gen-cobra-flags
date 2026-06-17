@@ -7,7 +7,6 @@
 *.dll
 *.so
 *.dylib
-gen-cobra-flags
 example/demo/demo
 .idea/*
 

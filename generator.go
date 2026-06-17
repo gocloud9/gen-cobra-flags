@@ -12,12 +12,13 @@ import (
 )
 
 type Field struct {
-	Name      string
-	Type      string
-	FlagName  string
-	ShortFlag string
-	Usage     string
-	Default   string
+	Name        string
+	Type        string
+	FlagName    string
+	ShortFlag   string
+	FlagDefault string
+	Usage       string
+	Default     string
 }
 
 type GeneratorData struct {
@@ -85,7 +86,7 @@ func generateFlags(inputFile, outputFile, structName, pkgName string) error {
 				}
 			}
 
-			// Default flag name is lowercase field name
+			// FlagDefault flag name is lowercase field name
 			if flagName == "" {
 				flagName = strings.ToLower(fieldName)
 			}
@@ -155,11 +156,11 @@ import (
 func Add{{.StructName}}Flags(cmd *cobra.Command, config *{{.StructName}}) {
 {{- range .Fields}}
 	{{- if eq .Type "string"}}
-	cmd.Flags().StringVarP(&config.{{.Name}}, "{{.FlagName}}", "{{.ShortFlag}}", "{{.Default}}", "{{.Usage}}")
+	cmd.Flags().StringVarP(&config.{{.Name}}, "{{.FlagName}}", "{{.ShortFlag}}", "{{.FlagDefault}}", "{{.Usage}}")
 	{{- else if eq .Type "int"}}
-	cmd.Flags().IntVarP(&config.{{.Name}}, "{{.FlagName}}", "{{.ShortFlag}}", {{if .Default}}{{.Default}}{{else}}0{{end}}, "{{.Usage}}")
+	cmd.Flags().IntVarP(&config.{{.Name}}, "{{.FlagName}}", "{{.ShortFlag}}", {{if .FlagDefault}}{{.FlagDefault}}{{else}}0{{end}}, "{{.Usage}}")
 	{{- else if eq .Type "bool"}}
-	cmd.Flags().BoolVarP(&config.{{.Name}}, "{{.FlagName}}", "{{.ShortFlag}}", {{if .Default}}{{.Default}}{{else}}false{{end}}, "{{.Usage}}")
+	cmd.Flags().BoolVarP(&config.{{.Name}}, "{{.FlagName}}", "{{.ShortFlag}}", {{if .FlagDefault}}{{.FlagDefault}}{{else}}false{{end}}, "{{.Usage}}")
 	{{- else if eq .Type "[]string"}}
 	cmd.Flags().StringSliceVarP(&config.{{.Name}}, "{{.FlagName}}", "{{.ShortFlag}}", nil, "{{.Usage}}")
 	{{- else}}

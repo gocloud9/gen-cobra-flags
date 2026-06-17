@@ -42,14 +42,46 @@ func {{ .Struct.Name }}ConfigFromFlags(cmd *cobra.Command) (*{{ .Struct.Name }}C
     if err != nil {
         return nil, fmt.Errorf("adapting {{ .Struct.Name }} config from flags: %w", err)
     }
-
-
     {{- range $f := .Struct.Fields | onlyCobraFlags }}
-    c.{{$f.Name}}, err = cmd.Flags().{{ $f | fieldToFlagGetMethod }}
-    if err != nil {
-        return nil, fmt.Errorf("getting flag {{$f.Name}}: %w", err)
+    {{- if $f | fieldConfigIsPrimitive }}
+
+    if c.{{$f.Name}} == {{$f | fieldZeroValue }} {
+    {{- else }}
+    if reflect.DeepEqual(c.{{$f.Name}}, {{$f | fieldZeroValue }}) {
+    {{- end }}
+        {{- if $f | needsFlagAdaptor }}
+        c.{{$f.Name}}, err = {{$f | asFlagAdaptorName }}({{$f | fieldDefaultValue }})
+        if err != nil {
+            return nil, fmt.Errorf("adapting default value for flag {{$f | getFlagName}}: %w", err)
+        }
+        {{- else }}
+        c.{{$f.Name}} = {{$f | fieldDefaultValue }}
+        {{- end }}
     }
-    {{ end }}
+
+    in{{$f.Name}}, err := cmd.Flags().{{ $f | fieldToFlagGetMethod }}
+    if err != nil {
+        return nil, fmt.Errorf("getting flag {{$f| getFlagName}}: %w", err)
+    }
+
+    {{- if $f | needsFlagAdaptor }}
+        {{- if $f | fieldConfigIsPrimitive }}
+    if in{{$f.Name}} != {{$f | fieldDefaultValue }} {
+        {{- else }}
+    if reflect.DeepEqual(in{{$f.Name}}, {{$f | fieldDefaultValue }}) {
+        {{- end }}
+        c.{{$f.Name}}, err = {{$f | asFlagAdaptorName }}(in{{$f.Name}})
+        if err != nil {
+            return nil, fmt.Errorf("adapting flag {{$f | getFlagName}}: %w", err)
+        }
+    }
+    {{- else }}
+
+    if in{{$f.Name}} != {{$f | fieldDefaultValue }} {
+       c.{{$f.Name}} = in{{$f.Name}}
+    }
+    {{- end }}
+    {{- end }}
     return &c, nil
 }
 
@@ -63,15 +95,15 @@ func (c *{{ .Struct.Name }}Config) To{{ .Struct.Name }}(opts ...*{{.Struct.Name 
     if err != nil {
         return nil, fmt.Errorf("adapting field {{$f.Name}}: %w", err)
     }
-    {{ else }}
+    {{- else }}
     r.{{$f.Name}} = c.{{ $f.Name }}
-    {{ end }}
+    {{- end }}
     {{- end }}
 
     for i := range opts {
       {{- range .Struct.Fields | onlyCobraOptions }}
       if opts[i].{{ .Name }} != nil {
-          {{ if .IsPointer }}
+          {{- if .IsPointer }}
       r.{{ .Name }} = opts[i].{{ .Name }}
           {{- else -}}
       r.{{ .Name }} = *opts[i].{{ .Name }}

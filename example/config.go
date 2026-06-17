@@ -79,11 +79,11 @@ type CreateFooBarRequest struct {
 	// +cobra:yaml=IPAddress
 	IPAddress net.IP
 
-	// +cobra:flag=ip-address
-	// +cobra:usage=IP Address
+	// +cobra:flag=cidr
+	// +cobra:usage=CIDR BLOCK
 	// +cobra:default=net.IPNet{}
-	// +cobra:json=IPAddress
-	// +cobra:yaml=IPAddress
+	// +cobra:json=CIDR
+	// +cobra:yaml=CIDR
 	CIDR *net.IPNet
 
 	// +cobra:flag=my-custom-type
@@ -91,6 +91,7 @@ type CreateFooBarRequest struct {
 	// +cobra:default=""
 	// +cobra:json=MyCustomType
 	// +cobra:yaml=MyCustomType
+	// +cobra:flag:type=String
 	// +cobra:flag:adaptor=StringToMyCustomType
 	MyCustomType MyCustomType
 

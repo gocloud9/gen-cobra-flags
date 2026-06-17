@@ -21,8 +21,9 @@ type Input struct {
 	DestinationPackage string
 }
 
-func main() {
+var samePackageAsSource bool
 
+func main() {
 	parser := parse.Parser{}
 	cw, err := os.Getwd()
 	if err != nil {
@@ -37,6 +38,8 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+
+	samePackageAsSource = false
 
 	err = generate.ExecuteWithCustom(results, generate.OptionsWithCustom[Input]{
 		CustomInput: Input{
@@ -65,16 +68,16 @@ func main() {
 				field := (*Field)(f)
 
 				if field.TypeName == "time.Time" {
-					return fmt.Sprintf("%sP(\"%s\", \"%s\", %s, []string{time.RFC3339}, \"%s\")", field.flagType(), field.flag(), field.Short(), field.Default(), field.Usage())
+					return fmt.Sprintf("%sP(\"%s\", \"%s\", %s, []string{time.RFC3339}, \"%s\")", field.flagType(), field.flag(), field.Short(), field.FlagDefault(), field.Usage())
 				}
 
-				return fmt.Sprintf("%sP(\"%s\", \"%s\", %s, \"%s\")", field.flagType(), field.flag(), field.Short(), field.Default(), field.Usage())
+				return fmt.Sprintf("%sP(\"%s\", \"%s\", %s, \"%s\")", field.flagType(), field.flag(), field.Short(), field.FlagDefault(), field.Usage())
 
 			},
 			"fieldToFlagGetMethod": func(f *parse.FieldInfo) string {
 				field := (*Field)(f)
 
-				return fmt.Sprintf("Get%s(\"%s\")", GoToCobraType(field.TypeName), field.flag())
+				return fmt.Sprintf("Get%s(\"%s\")", field.flagType(), field.flag())
 			},
 			"getCobraTags": func(field *parse.FieldInfo) string {
 				tags := []string{}
@@ -220,9 +223,28 @@ func main() {
 
 			"needsConfigAdaptor": func(f *parse.FieldInfo) bool {
 				field := (*Field)(f)
-	
+
 				_, ok := field.Markers["+cobra:config:adaptor"]
 				if ok {
+					return true
+				}
+
+				if !field.configIsSameType() {
+					return true
+				}
+
+				return false
+			},
+
+			"needsFlagAdaptor": func(f *parse.FieldInfo) bool {
+				field := (*Field)(f)
+
+				_, ok := field.Markers["+cobra:config:adaptor"]
+				if ok {
+					return true
+				}
+
+				if field.configType() != CobraToGoType(field.flagType()) {
 					return true
 				}
 
@@ -231,6 +253,58 @@ func main() {
 
 			"toSnakeCase": func(in string) string {
 				return strings.ToLower(regexp.MustCompile("([a-z0-9])([A-Z])").ReplaceAllString(in, "${1}_${2}"))
+			},
+			"fieldZeroValue": func(f *parse.FieldInfo) string {
+				field := (*Field)(f)
+
+				return field.ConfigZero()
+			},
+			"fieldDefaultValue": func(f *parse.FieldInfo) string {
+				field := (*Field)(f)
+
+				return field.FlagDefault()
+			},
+			"fieldConfigIsPrimitive": func(f *parse.FieldInfo) bool {
+				field := (*Field)(f)
+				switch field.configType() {
+				case "string", "bool",
+					"int", "int8", "int16", "int32", "int64",
+					"uint", "uint8", "uint16", "uint32", "uint64",
+					"float32", "float64":
+					return true
+				default:
+					if !field.configIsSameType() {
+						return false
+					}
+
+					baseType := GetBaseType(field.TypeInfo)
+					switch baseType.TypeName {
+					case "string", "bool",
+						"int", "int8", "int16", "int32", "int64",
+						"uint", "uint8", "uint16", "uint32", "uint64",
+						"float32", "float64":
+						return true
+					}
+
+					return false
+				}
+			},
+			"fieldTargetIsPrimitive": func(f *parse.FieldInfo) bool {
+				field := (*Field)(f)
+				switch field.TypeName {
+				case "string", "bool",
+					"int", "int8", "int16", "int32", "int64",
+					"uint", "uint8", "uint16", "uint32", "uint64",
+					"float32", "float64":
+					return true
+				default:
+					return false
+				}
+			},
+			"getFlagName": func(f *parse.FieldInfo) string {
+				field := (*Field)(f)
+
+				return field.flag()
 			},
 		},
 	})
@@ -290,6 +364,10 @@ func GoToCobraType(typeName string) string {
 		}
 
 		if strings.ToUpper(typeName[:1]) == typeName[:1] {
+			return "String"
+		}
+
+		if strings.Contains(typeName, ".") {
 			return "String"
 		}
 
@@ -370,9 +448,10 @@ func (f *Field) configAdaptor() string {
 	a, ok := f.Markers["+cobra:config:adaptor"]
 	if !ok {
 		inType := f.configType()
-		outType := f.TypeName
 
-		return adaptors.GetFuncNameByTypeNames(inType, outType)
+		outType := GetBaseType(f.TypeInfo).TypeName
+
+		adaptors.GetFuncNameByTypeNames(inType, outType)
 	}
 
 	return "adaptor" + a
@@ -389,7 +468,11 @@ func (f *Field) flagAdaptor() string {
 		inType := CobraToGoType(f.flagType())
 		outType := f.configType()
 
-		return adaptors.GetFuncNameByTypeNames(inType, outType)
+		if "*"+inType == outType {
+			return "adaptors.ToPtr"
+		}
+
+		return "adaptors." + adaptors.GetFuncNameByTypeNames(inType, outType)
 	}
 
 	return "adaptor" + a
@@ -412,10 +495,22 @@ func (f *Field) flagType() string {
 func (f *Field) configType() string {
 	t, ok := f.Markers["+cobra:config:type"]
 	if !ok {
-		return f.TypeName
+		if samePackageAsSource {
+			return f.TypeName
+		}
+		return f.ExternalTypeName
 	}
 
 	return t
+}
+
+func (f *Field) configIsSameType() bool {
+	t, ok := f.Markers["+cobra:config:type"]
+	if !ok {
+		return true
+	}
+
+	return t == f.TypeName
 }
 
 func (f *Field) flag() string {
@@ -437,10 +532,99 @@ func (f *Field) Short() string {
 
 func (f *Field) Usage() string {
 	cobraUsage, _ := f.Markers["+cobra:usage"]
+
 	return cobraUsage
 }
 
-func (f *Field) Default() string {
-	cobraDefault, _ := f.Markers["+cobra:default"]
+func (f *Field) FlagDefault() string {
+	cobraDefault, ok := f.Markers["+cobra:default"]
+	if !ok {
+		return f.FlagZero()
+	}
+
 	return cobraDefault
+}
+
+func (f *Field) ConfigZero() string {
+	switch f.configType() {
+	case "string":
+		return "\"\""
+	case "bool":
+		return "false"
+	case "int", "int8", "int16", "int32", "int64",
+		"uint", "uint8", "uint16", "uint32", "uint64",
+		"float32", "float64":
+		return "0"
+	default:
+		if f.IsPointer || f.IsMap || f.IsSlice {
+			return "nil"
+		}
+
+		if f.IsStruct {
+			return f.configType() + "{}"
+		}
+	}
+
+	baseType := GetBaseType(f.TypeInfo)
+
+	switch baseType.TypeName {
+	case "string":
+		return "\"\""
+	case "bool":
+		return "false"
+	case "int", "int8", "int16", "int32", "int64",
+		"uint", "uint8", "uint16", "uint32", "uint64",
+		"float32", "float64":
+		return "0"
+	default:
+		if f.IsPointer || f.IsMap || f.IsSlice {
+			return "nil"
+		}
+
+		if f.IsStruct {
+			return f.configType() + "{}"
+		}
+	}
+
+	return "nil"
+}
+
+func GetBaseType(t *parse.TypeInfo) *parse.TypeInfo {
+	if t.IsStruct {
+		return t
+	}
+
+	if t.IsType {
+		return GetBaseType(t.TypeOf)
+	}
+
+	return t
+}
+
+func (f *Field) FlagZero() string {
+	switch f.flagType() {
+	case "String":
+		return "\"\""
+	case "Bool":
+		return "false"
+	case "Int", "Int8", "Int16", "Int32", "Int64",
+		"Uint", "Uint8", "Uint16", "Uint32", "Uint64",
+		"Float32", "Float64":
+		return "0"
+	case "Duration":
+		return "0"
+	case "Time":
+		return "time.Time{}"
+	case "IP":
+		return "net.IP{}"
+	case "IPNet":
+
+		return f.TypeName + "{}"
+
+	default:
+
+		return "nil"
+
+	}
+
 }

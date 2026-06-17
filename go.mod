@@ -5,7 +5,7 @@ go 1.24.11
 require (
 	github.com/gocloud9/gen-cobra-flags/example v0.0.0-20251227234251-a843dc22fc99
 	github.com/gocloud9/gen-cobra-flags/sdk v0.0.0-pre
-	github.com/gocloud9/gen-tool v0.0.7
+	github.com/gocloud9/gen-tool v0.0.9
 	github.com/spf13/cobra v1.10.2
 )
 

@@ -1,0 +1,84 @@
+// Generated Code with gen-cobra-flags - Do Not Edit
+package simple
+
+import (
+	"fmt"
+	"github.com/gocloud9/gen-cobra-flags/sdk/pkg/adaptors"
+	"github.com/spf13/cobra"
+)
+
+type SimpleRequestConfig struct {
+	Count   int
+	Enabled bool
+	Title   string
+}
+
+// AddSimpleRequestFlags adds flags for SimpleRequest to the cobra command.
+func AddSimpleRequestFlags(cmd *cobra.Command) {
+	cmd.Flags().StringP("simple", "s", "", "A simple request")
+	cmd.Flags().IntP("count", "", 0, "The count")
+	cmd.Flags().BoolP("enabled", "", false, "Whether enabled")
+	cmd.Flags().StringP("title", "t", "", "The title")
+}
+
+type SimpleRequestOptions struct {
+}
+
+func SimpleRequestConfigFromFlags(cmd *cobra.Command) (*SimpleRequestConfig, error) {
+	cin, err := cmd.Flags().GetString("simple")
+	if err != nil {
+		return nil, fmt.Errorf("getting SimpleRequest config from flags: %w", err)
+	}
+
+	c, err := adaptors.JsonOrYamlToStruct[SimpleRequestConfig]([]byte(cin))
+	if err != nil {
+		return nil, fmt.Errorf("adapting SimpleRequest config from flags: %w", err)
+	}
+	if c.Count == 0 {
+		c.Count = 0
+	}
+
+	inCount, err := cmd.Flags().GetInt("count")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag count: %w", err)
+	}
+	if inCount != 0 {
+		c.Count = inCount
+	}
+	if c.Enabled == false {
+		c.Enabled = false
+	}
+
+	inEnabled, err := cmd.Flags().GetBool("enabled")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag enabled: %w", err)
+	}
+	if inEnabled != false {
+		c.Enabled = inEnabled
+	}
+	if c.Title == "" {
+		c.Title = ""
+	}
+
+	inTitle, err := cmd.Flags().GetString("title")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag title: %w", err)
+	}
+	if inTitle != "" {
+		c.Title = inTitle
+	}
+
+	return &c, nil
+}
+
+func (c *SimpleRequestConfig) ToSimpleRequest(opts ...*SimpleRequestOptions) (*SimpleRequest, error) {
+	r := &SimpleRequest{}
+
+	var err error
+	_ = err
+	r.Count = c.Count
+	r.Enabled = c.Enabled
+	r.Title = c.Title
+
+	return r, nil
+}

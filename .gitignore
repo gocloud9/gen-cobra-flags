@@ -11,6 +11,9 @@ gen-cobra-flags
 example/demo/demo
 .idea/*
 
+# Build output (Makefile `build` target)
+/bin/
+
 # Test binary, built with `go test -c`
 *.test
 

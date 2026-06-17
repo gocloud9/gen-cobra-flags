@@ -1,8 +1,9 @@
 package adaptors_test
 
 import (
-	"github.com/gocloud9/gen-cobra-flags/sdk/pkg/adaptors"
 	"testing"
+
+	"github.com/gocloud9/gen-cobra-flags/sdk/pkg/adaptors"
 )
 
 func TestGetFuncNameByTypeNames(t *testing.T) {

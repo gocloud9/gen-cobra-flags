@@ -1,0 +1,18 @@
+// Generated Code with gen-cobra-flags - Do Not Edit
+package {{ .Custom.DestinationPackage }}
+{{ $imports := .Results | sharedImports }}
+{{- if $imports }}
+import (
+{{- range $import := $imports }}
+    {{ $import }}
+{{- end }}
+)
+{{ end }}
+{{ range .Results | getAdaptors -}}
+var {{ .Name }} func({{ .InTypeName }}) ({{ .OutTypeName }}, error)
+
+func {{ . | toRegisterMethod }}(f func({{ .InTypeName }}) ({{ .OutTypeName }}, error)) {
+    {{ .Name }} = f
+}
+
+{{ end -}}

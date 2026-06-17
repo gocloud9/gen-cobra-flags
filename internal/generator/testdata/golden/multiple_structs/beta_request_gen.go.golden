@@ -1,0 +1,56 @@
+// Generated Code with gen-cobra-flags - Do Not Edit
+package multi
+
+import (
+	"fmt"
+	"github.com/gocloud9/gen-cobra-flags/sdk/pkg/adaptors"
+	"github.com/spf13/cobra"
+)
+
+type BetaRequestConfig struct {
+	Size int
+}
+
+// AddBetaRequestFlags adds flags for BetaRequest to the cobra command.
+func AddBetaRequestFlags(cmd *cobra.Command) {
+	cmd.Flags().StringP("beta", "b", "", "Beta request")
+	cmd.Flags().IntP("beta-size", "", 0, "Beta size")
+}
+
+type BetaRequestOptions struct {
+}
+
+func BetaRequestConfigFromFlags(cmd *cobra.Command) (*BetaRequestConfig, error) {
+	cin, err := cmd.Flags().GetString("beta")
+	if err != nil {
+		return nil, fmt.Errorf("getting BetaRequest config from flags: %w", err)
+	}
+
+	c, err := adaptors.JsonOrYamlToStruct[BetaRequestConfig]([]byte(cin))
+	if err != nil {
+		return nil, fmt.Errorf("adapting BetaRequest config from flags: %w", err)
+	}
+	if c.Size == 0 {
+		c.Size = 0
+	}
+
+	inSize, err := cmd.Flags().GetInt("beta-size")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag beta-size: %w", err)
+	}
+	if inSize != 0 {
+		c.Size = inSize
+	}
+
+	return &c, nil
+}
+
+func (c *BetaRequestConfig) ToBetaRequest(opts ...*BetaRequestOptions) (*BetaRequest, error) {
+	r := &BetaRequest{}
+
+	var err error
+	_ = err
+	r.Size = c.Size
+
+	return r, nil
+}

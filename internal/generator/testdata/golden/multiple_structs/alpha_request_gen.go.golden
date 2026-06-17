@@ -1,0 +1,56 @@
+// Generated Code with gen-cobra-flags - Do Not Edit
+package multi
+
+import (
+	"fmt"
+	"github.com/gocloud9/gen-cobra-flags/sdk/pkg/adaptors"
+	"github.com/spf13/cobra"
+)
+
+type AlphaRequestConfig struct {
+	Name string
+}
+
+// AddAlphaRequestFlags adds flags for AlphaRequest to the cobra command.
+func AddAlphaRequestFlags(cmd *cobra.Command) {
+	cmd.Flags().StringP("alpha", "a", "", "Alpha request")
+	cmd.Flags().StringP("alpha-name", "", "", "Alpha name")
+}
+
+type AlphaRequestOptions struct {
+}
+
+func AlphaRequestConfigFromFlags(cmd *cobra.Command) (*AlphaRequestConfig, error) {
+	cin, err := cmd.Flags().GetString("alpha")
+	if err != nil {
+		return nil, fmt.Errorf("getting AlphaRequest config from flags: %w", err)
+	}
+
+	c, err := adaptors.JsonOrYamlToStruct[AlphaRequestConfig]([]byte(cin))
+	if err != nil {
+		return nil, fmt.Errorf("adapting AlphaRequest config from flags: %w", err)
+	}
+	if c.Name == "" {
+		c.Name = ""
+	}
+
+	inName, err := cmd.Flags().GetString("alpha-name")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag alpha-name: %w", err)
+	}
+	if inName != "" {
+		c.Name = inName
+	}
+
+	return &c, nil
+}
+
+func (c *AlphaRequestConfig) ToAlphaRequest(opts ...*AlphaRequestOptions) (*AlphaRequest, error) {
+	r := &AlphaRequest{}
+
+	var err error
+	_ = err
+	r.Name = c.Name
+
+	return r, nil
+}

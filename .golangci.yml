@@ -1,0 +1,62 @@
+version: "2"
+
+run:
+  timeout: 5m
+  tests: true
+
+linters:
+  default: standard
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - revive
+    - unconvert
+    - unparam
+    - gosec
+    - bodyclose
+    - nilerr
+    - errorlint
+  settings:
+    revive:
+      rules:
+        # Exported symbols must carry GoDoc comments.
+        - name: exported
+          disabled: false
+        - name: package-comments
+          disabled: false
+    misspell:
+      locale: US
+  exclusions:
+    generated: lax
+    rules:
+      # Generated code and golden fixtures are not held to lint standards.
+      - path: 'internal/generator/testdata/'
+        linters:
+          - all
+      - path: '_gen\.go$'
+        linters:
+          - all
+      # The example config is a read-only fixture that intentionally omits a
+      # package comment to keep the +cobra marker example minimal.
+      - path: 'example/config\.go$'
+        linters:
+          - revive
+      # Test helpers legitimately ignore some errors.
+      - path: '_test\.go$'
+        linters:
+          - errcheck
+          - gosec
+          - unparam
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/gocloud9/gen-cobra-flags

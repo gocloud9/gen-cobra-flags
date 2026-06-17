@@ -1,0 +1,121 @@
+// Generated Code with gen-cobra-flags - Do Not Edit
+package {{ .Custom.DestinationPackage }}
+
+import (
+{{- range $import := .Struct | requiredImports }}
+    {{ $import }}
+{{- end }}
+)
+
+type {{ .Struct.Name }}Config struct {
+{{- range $f := .Struct.Fields | sortedFields }}
+    {{ $f.Name }} {{ $f | fieldToConfigTypeName }}{{ $f | getCobraTags }}
+{{- end }}
+}
+
+// Add{{ .Struct.Name }}Flags adds flags for {{ .Struct.Name }} to the cobra command.
+func Add{{ .Struct.Name }}Flags(cmd *cobra.Command) {
+    cmd.Flags().{{ .Struct | structToFlagMethod }}
+{{- range $f := .Struct.Fields | onlyCobraFlags | sortedFields }}
+    cmd.Flags().{{ $f | fieldToFlagMethod }}
+{{- end }}
+}
+
+type {{ .Struct.Name }}Options struct {
+{{- range $f := .Struct.Fields | onlyCobraOptions | sortedFields }}
+    {{- if $f.IsPointer }}
+    {{ $f.Name }} {{ $f.TypeName }}
+    {{- else }}
+    {{ $f.Name }} *{{ $f.TypeName }}
+    {{- end }}
+{{- end }}
+}
+
+func {{ .Struct.Name }}ConfigFromFlags(cmd *cobra.Command) (*{{ .Struct.Name }}Config, error) {
+    cin, err := cmd.Flags().{{ .Struct | structToFlagGetMethod }}
+    if err != nil {
+        return nil, fmt.Errorf("getting {{ .Struct.Name }} config from flags: %w", err)
+    }
+
+    c, err := {{ .Struct | structToFlagAdaptorName }}([]byte(cin))
+    if err != nil {
+        return nil, fmt.Errorf("adapting {{ .Struct.Name }} config from flags: %w", err)
+    }
+{{- range $f := .Struct.Fields | onlyCobraFlags | sortedFields }}
+
+    {{- if $f | fieldConfigIsPrimitive }}
+    if c.{{ $f.Name }} == {{ $f | fieldZeroValue }} {
+    {{- else }}
+    if reflect.DeepEqual(c.{{ $f.Name }}, {{ $f | fieldZeroValue }}) {
+    {{- end }}
+        {{- if $f | needsFlagAdaptor }}
+        c.{{ $f.Name }}, err = {{ $f | asFlagAdaptorName }}({{ $f | fieldDefaultValue }})
+        if err != nil {
+            return nil, fmt.Errorf("adapting default value for flag {{ $f | getFlagName }}: %w", err)
+        }
+        {{- else }}
+        c.{{ $f.Name }} = {{ $f | fieldDefaultValue }}
+        {{- end }}
+    }
+
+    in{{ $f.Name }}, err := cmd.Flags().{{ $f | fieldToFlagGetMethod }}
+    if err != nil {
+        return nil, fmt.Errorf("getting flag {{ $f | getFlagName }}: %w", err)
+    }
+    {{- if $f | needsFlagAdaptor }}
+        {{- if $f | fieldConfigIsPrimitive }}
+    if in{{ $f.Name }} != {{ $f | fieldDefaultValue }} {
+        {{- else }}
+    if !reflect.DeepEqual(in{{ $f.Name }}, {{ $f | fieldDefaultValue }}) {
+        {{- end }}
+        c.{{ $f.Name }}, err = {{ $f | asFlagAdaptorName }}(in{{ $f.Name }})
+        if err != nil {
+            return nil, fmt.Errorf("adapting flag {{ $f | getFlagName }}: %w", err)
+        }
+    }
+    {{- else }}
+        {{- if $f | fieldConfigIsPrimitive }}
+    if in{{ $f.Name }} != {{ $f | fieldDefaultValue }} {
+        {{- else }}
+    if !reflect.DeepEqual(in{{ $f.Name }}, {{ $f | fieldDefaultValue }}) {
+        {{- end }}
+        c.{{ $f.Name }} = in{{ $f.Name }}
+    }
+    {{- end }}
+{{- end }}
+
+    return &c, nil
+}
+
+func (c *{{ .Struct.Name }}Config) To{{ .Struct.Name }}(opts ...*{{ .Struct.Name }}Options) (*{{ if not (samePackage) }}{{ .Package.Name }}.{{ end }}{{ .Struct.Name }}, error) {
+    r := &{{ if not (samePackage) }}{{ .Package.Name }}.{{ end }}{{ .Struct.Name }}{}
+
+    var err error
+    _ = err
+{{- range $f := .Struct.Fields | sortedFields }}
+    {{- if $f | needsConfigAdaptor }}
+    r.{{ $f.Name }}, err = {{ $f | asConfigAdaptorName }}(c.{{ $f.Name }})
+    if err != nil {
+        return nil, fmt.Errorf("adapting field {{ $f.Name }}: %w", err)
+    }
+    {{- else }}
+    r.{{ $f.Name }} = c.{{ $f.Name }}
+    {{- end }}
+{{- end }}
+{{- if .Struct.Fields | hasOptions }}
+
+    for i := range opts {
+{{- range $f := .Struct.Fields | onlyCobraOptions | sortedFields }}
+        if opts[i].{{ $f.Name }} != nil {
+        {{- if $f.IsPointer }}
+            r.{{ $f.Name }} = opts[i].{{ $f.Name }}
+        {{- else }}
+            r.{{ $f.Name }} = *opts[i].{{ $f.Name }}
+        {{- end }}
+        }
+{{- end }}
+    }
+{{- end }}
+
+    return r, nil
+}

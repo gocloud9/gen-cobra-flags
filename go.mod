@@ -3,11 +3,8 @@ module github.com/gocloud9/gen-cobra-flags
 go 1.26.0
 
 require (
-	github.com/gocloud9/gen-cobra-flags/sdk v0.0.0-pre
 	github.com/gocloud9/gen-tool v0.0.9
 )
-
-replace github.com/gocloud9/gen-cobra-flags/sdk => ./sdk
 
 require (
 	go.yaml.in/yaml/v3 v3.0.4 // indirect

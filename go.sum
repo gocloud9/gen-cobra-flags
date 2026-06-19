@@ -1,5 +1,3 @@
-github.com/gocloud9/gen-tool v0.0.9 h1:fvkZo6FHJAxviZFEO71/YoLsQCYRq8OBoQLo8Qh8/yM=
-github.com/gocloud9/gen-tool v0.0.9/go.mod h1:9B7cZf4SYv16QC9Lku7y+Vmk2QnO4PgwU4DXitAddT0=
 github.com/google/go-cmp v0.6.0 h1:ofyhxvXcZhMsU5ulbFiLKl/XBFqE1GSq7atu8tAmTRI=
 github.com/google/go-cmp v0.6.0/go.mod h1:17dUlkBOakJ0+DkrSSNjCkIjxS6bF9zb3elmeNGIjoY=
 go.yaml.in/yaml/v3 v3.0.4 h1:tfq32ie2Jv2UxXFdLJdh3jXuOzWiL1fo0bu/FbuKpbc=

@@ -34,6 +34,22 @@ func goldenCases() []goldenCase {
 				SamePackageAsSource: true,
 			},
 		},
+		{
+			name:    "subcommands",
+			fixture: "subcommands",
+			opts: Options{
+				Package:             "subcommands",
+				SamePackageAsSource: true,
+			},
+		},
+		{
+			name:    "flagadaptor",
+			fixture: "flagadaptor",
+			opts: Options{
+				Package:             "flagadaptor",
+				SamePackageAsSource: true,
+			},
+		},
 	}
 }
 

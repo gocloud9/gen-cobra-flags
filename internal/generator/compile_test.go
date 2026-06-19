@@ -93,6 +93,7 @@ func TestGenerate_FixturesCompile(t *testing.T) {
 	}{
 		{name: "simple", fixture: "simple", pkg: "simple"},
 		{name: "multi", fixture: "multi", pkg: "multi"},
+		{name: "subcommands", fixture: "subcommands", pkg: "subcommands"},
 	}
 
 	root := repoRoot(t)

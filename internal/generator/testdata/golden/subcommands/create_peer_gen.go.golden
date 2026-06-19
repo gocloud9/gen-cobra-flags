@@ -1,0 +1,78 @@
+// Generated Code with gen-cobra-flags - Do Not Edit
+package subcommands
+
+import (
+	"fmt"
+	"github.com/gocloud9/gen-cobra-flags/sdk/pkg/adaptors"
+	"github.com/spf13/cobra"
+)
+
+type CreatePeerConfig struct {
+	Note       string
+	PeerRegion string
+	PeerVpcId  string
+}
+
+// AddCreatePeerFlags adds flags for CreatePeer to the cobra command.
+func AddCreatePeerFlags(cmd *cobra.Command) {
+	cmd.Flags().StringP("create-peer-config", "", "", "Aggregate JSON/YAML config for CreatePeer.")
+	cmd.Flags().StringP("peer-region", "", "", "[required] PeerRegion for CreatePeer.")
+	cmd.Flags().StringP("peer-vpc-id", "", "", "[required] PeerVpcId for CreatePeer.")
+}
+
+type CreatePeerOptions struct {
+}
+
+func CreatePeerConfigFromFlags(cmd *cobra.Command) (*CreatePeerConfig, error) {
+	cin, err := cmd.Flags().GetString("create-peer-config")
+	if err != nil {
+		return nil, fmt.Errorf("getting CreatePeer config from flags: %w", err)
+	}
+
+	c, err := adaptors.JsonOrYamlToStruct[CreatePeerConfig]([]byte(cin))
+	if err != nil {
+		return nil, fmt.Errorf("adapting CreatePeer config from flags: %w", err)
+	}
+	if c.PeerRegion == "" {
+		c.PeerRegion = ""
+	}
+
+	inPeerRegion, err := cmd.Flags().GetString("peer-region")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag peer-region: %w", err)
+	}
+	if cmd.Flags().Changed("peer-region") {
+		c.PeerRegion = inPeerRegion
+	}
+	if c.PeerVpcId == "" {
+		c.PeerVpcId = ""
+	}
+
+	inPeerVpcId, err := cmd.Flags().GetString("peer-vpc-id")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag peer-vpc-id: %w", err)
+	}
+	if cmd.Flags().Changed("peer-vpc-id") {
+		c.PeerVpcId = inPeerVpcId
+	}
+	if c.PeerRegion == "" {
+		return nil, fmt.Errorf("required flag peer-region not set")
+	}
+	if c.PeerVpcId == "" {
+		return nil, fmt.Errorf("required flag peer-vpc-id not set")
+	}
+
+	return &c, nil
+}
+
+func (c *CreatePeerConfig) ToCreatePeer(opts ...*CreatePeerOptions) (*CreatePeer, error) {
+	r := &CreatePeer{}
+
+	var err error
+	_ = err
+	r.Note = c.Note
+	r.PeerRegion = c.PeerRegion
+	r.PeerVpcId = c.PeerVpcId
+
+	return r, nil
+}

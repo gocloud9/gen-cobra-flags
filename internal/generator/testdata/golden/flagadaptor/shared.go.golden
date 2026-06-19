@@ -1,0 +1,8 @@
+// Generated Code with gen-cobra-flags - Do Not Edit
+package flagadaptor
+
+var adaptorBuildTags func([]string) (map[string]string, error)
+
+func RegisterAdaptorBuildTags(f func([]string) (map[string]string, error)) {
+	adaptorBuildTags = f
+}

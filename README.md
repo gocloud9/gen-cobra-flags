@@ -28,7 +28,7 @@ directory is on your `PATH`.
    ```go
    package simple
 
-   //go:generate gen-cobra-flags -input simple.go -struct SimpleRequest -output flags_gen.go -package simple -same-package
+   //go:generate gen-cobra-flags -input ./ -struct SimpleRequest -output ./ -package simple
 
    // SimpleRequest is a minimal annotated struct.
    // +cobra:flag=simple
@@ -92,12 +92,13 @@ gen-cobra-flags [flags]
 | `-output`        | `.`     | Directory (or file) to write generated files to.                     |
 | `-package`       | —       | Package name for the generated files. **Required.**                  |
 | `-struct`        | (all)   | Restrict generation to a single struct. Defaults to all annotated.   |
-| `-source-import` | —       | Import path of the package containing the source structs.            |
-| `-same-package`  | `false` | Generate into the same package as the source structs.                |
+| `-source-import` | (derived) | Import path of the package containing the source structs. Auto-derived from the input directory's Go module when generating into a different package; set it to override the derived value. |
 
-Use `-same-package` when the generated file lives alongside the source struct (no import of
-the source package is needed). Omit it and set `-source-import` when generating into a
-separate package that imports the source types.
+When `-output` resolves to the same directory as `-input`, the generated code is emitted into
+the source package, so no source-package import or qualifier is produced. When generating into
+a separate directory, the generator imports the source package (its import path is derived
+automatically from the input directory's Go module, or taken from `-source-import` when set).
+
 
 ## Markers
 

@@ -1,0 +1,77 @@
+// Generated Code with gen-cobra-flags - Do Not Edit
+package flagadaptor
+
+import (
+	"fmt"
+	"github.com/gocloud9/gen-cobra-flags/sdk/pkg/adaptors"
+	"github.com/spf13/cobra"
+	"reflect"
+)
+
+type FilterRequestConfig struct {
+	Region string
+	Tags   map[string]string
+}
+
+// AddFilterRequestFlags adds flags for FilterRequest to the cobra command.
+func AddFilterRequestFlags(cmd *cobra.Command) {
+	cmd.Flags().StringP("filter-config", "c", "", "Filter configuration")
+	cmd.Flags().StringP("region", "", "", "Region filter")
+	cmd.Flags().StringArrayP("tag", "t", nil, "Tag filters. Format is key=value or key.")
+}
+
+type FilterRequestOptions struct {
+}
+
+func FilterRequestConfigFromFlags(cmd *cobra.Command) (*FilterRequestConfig, error) {
+	cin, err := cmd.Flags().GetString("filter-config")
+	if err != nil {
+		return nil, fmt.Errorf("getting FilterRequest config from flags: %w", err)
+	}
+
+	c, err := adaptors.JsonOrYamlToStruct[FilterRequestConfig]([]byte(cin))
+	if err != nil {
+		return nil, fmt.Errorf("adapting FilterRequest config from flags: %w", err)
+	}
+	if c.Region == "" {
+		c.Region = ""
+	}
+
+	inRegion, err := cmd.Flags().GetString("region")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag region: %w", err)
+	}
+	if cmd.Flags().Changed("region") {
+		c.Region = inRegion
+	}
+	if reflect.DeepEqual(c.Tags, nil) {
+		c.Tags, err = adaptorBuildTags(nil)
+		if err != nil {
+			return nil, fmt.Errorf("adapting default value for flag tag: %w", err)
+		}
+	}
+
+	inTags, err := cmd.Flags().GetStringArray("tag")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag tag: %w", err)
+	}
+	if cmd.Flags().Changed("tag") {
+		c.Tags, err = adaptorBuildTags(inTags)
+		if err != nil {
+			return nil, fmt.Errorf("adapting flag tag: %w", err)
+		}
+	}
+
+	return &c, nil
+}
+
+func (c *FilterRequestConfig) ToFilterRequest(opts ...*FilterRequestOptions) (*FilterRequest, error) {
+	r := &FilterRequest{}
+
+	var err error
+	_ = err
+	r.Region = c.Region
+	r.Tags = c.Tags
+
+	return r, nil
+}

@@ -38,7 +38,7 @@ func BetaRequestConfigFromFlags(cmd *cobra.Command) (*BetaRequestConfig, error) 
 	if err != nil {
 		return nil, fmt.Errorf("getting flag beta-size: %w", err)
 	}
-	if inSize != 0 {
+	if cmd.Flags().Changed("beta-size") {
 		c.Size = inSize
 	}
 

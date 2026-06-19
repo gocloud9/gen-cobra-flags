@@ -38,7 +38,7 @@ func AlphaRequestConfigFromFlags(cmd *cobra.Command) (*AlphaRequestConfig, error
 	if err != nil {
 		return nil, fmt.Errorf("getting flag alpha-name: %w", err)
 	}
-	if inName != "" {
+	if cmd.Flags().Changed("alpha-name") {
 		c.Name = inName
 	}
 

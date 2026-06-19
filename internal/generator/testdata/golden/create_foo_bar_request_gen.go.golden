@@ -35,7 +35,7 @@ func AddCreateFooBarRequestFlags(cmd *cobra.Command) {
 	cmd.Flags().DurationP("duration", "T", time.Duration(0), "Duration value")
 	cmd.Flags().IPP("ip-address", "", net.IP{}, "IP Address")
 	cmd.Flags().StringP("my-custom-type", "", "", "Some custom type")
-	cmd.Flags().StringP("name", "N", "", "Name of FooBar")
+	cmd.Flags().StringP("name", "N", "", "[required] Name of FooBar")
 	cmd.Flags().IntP("number", "n", 10, "Number of items")
 	cmd.Flags().StringToIntP("some-int-map", "", nil, "Some int map")
 	cmd.Flags().StringToStringP("some-string-map", "", nil, "Some string map")
@@ -68,7 +68,7 @@ func CreateFooBarRequestConfigFromFlags(cmd *cobra.Command) (*CreateFooBarReques
 	if err != nil {
 		return nil, fmt.Errorf("getting flag a-conversion-of-types: %w", err)
 	}
-	if inAConversionOfTypes != 1 {
+	if cmd.Flags().Changed("a-conversion-of-types") {
 		c.AConversionOfTypes, err = adaptorCustomInt64ToInt32(inAConversionOfTypes)
 		if err != nil {
 			return nil, fmt.Errorf("adapting flag a-conversion-of-types: %w", err)
@@ -85,7 +85,7 @@ func CreateFooBarRequestConfigFromFlags(cmd *cobra.Command) (*CreateFooBarReques
 	if err != nil {
 		return nil, fmt.Errorf("getting flag cidr: %w", err)
 	}
-	if !reflect.DeepEqual(inCIDR, net.IPNet{}) {
+	if cmd.Flags().Changed("cidr") {
 		c.CIDR, err = adaptors.ToPtr(inCIDR)
 		if err != nil {
 			return nil, fmt.Errorf("adapting flag cidr: %w", err)
@@ -99,7 +99,7 @@ func CreateFooBarRequestConfigFromFlags(cmd *cobra.Command) (*CreateFooBarReques
 	if err != nil {
 		return nil, fmt.Errorf("getting flag debug: %w", err)
 	}
-	if inDebug != false {
+	if cmd.Flags().Changed("debug") {
 		c.Debug = inDebug
 	}
 	if reflect.DeepEqual(c.Duration, nil) {
@@ -110,7 +110,7 @@ func CreateFooBarRequestConfigFromFlags(cmd *cobra.Command) (*CreateFooBarReques
 	if err != nil {
 		return nil, fmt.Errorf("getting flag duration: %w", err)
 	}
-	if !reflect.DeepEqual(inDuration, time.Duration(0)) {
+	if cmd.Flags().Changed("duration") {
 		c.Duration = inDuration
 	}
 	if reflect.DeepEqual(c.IPAddress, nil) {
@@ -121,7 +121,7 @@ func CreateFooBarRequestConfigFromFlags(cmd *cobra.Command) (*CreateFooBarReques
 	if err != nil {
 		return nil, fmt.Errorf("getting flag ip-address: %w", err)
 	}
-	if !reflect.DeepEqual(inIPAddress, net.IP{}) {
+	if cmd.Flags().Changed("ip-address") {
 		c.IPAddress = inIPAddress
 	}
 	if c.MyCustomType == 0 {
@@ -135,7 +135,7 @@ func CreateFooBarRequestConfigFromFlags(cmd *cobra.Command) (*CreateFooBarReques
 	if err != nil {
 		return nil, fmt.Errorf("getting flag my-custom-type: %w", err)
 	}
-	if inMyCustomType != "" {
+	if cmd.Flags().Changed("my-custom-type") {
 		c.MyCustomType, err = adaptorStringToMyCustomType(inMyCustomType)
 		if err != nil {
 			return nil, fmt.Errorf("adapting flag my-custom-type: %w", err)
@@ -149,7 +149,7 @@ func CreateFooBarRequestConfigFromFlags(cmd *cobra.Command) (*CreateFooBarReques
 	if err != nil {
 		return nil, fmt.Errorf("getting flag name: %w", err)
 	}
-	if inName != "" {
+	if cmd.Flags().Changed("name") {
 		c.Name = inName
 	}
 	if c.Number == 0 {
@@ -160,7 +160,7 @@ func CreateFooBarRequestConfigFromFlags(cmd *cobra.Command) (*CreateFooBarReques
 	if err != nil {
 		return nil, fmt.Errorf("getting flag number: %w", err)
 	}
-	if inNumber != 10 {
+	if cmd.Flags().Changed("number") {
 		c.Number = inNumber
 	}
 	if reflect.DeepEqual(c.SomeIntMap, nil) {
@@ -171,7 +171,7 @@ func CreateFooBarRequestConfigFromFlags(cmd *cobra.Command) (*CreateFooBarReques
 	if err != nil {
 		return nil, fmt.Errorf("getting flag some-int-map: %w", err)
 	}
-	if !reflect.DeepEqual(inSomeIntMap, nil) {
+	if cmd.Flags().Changed("some-int-map") {
 		c.SomeIntMap = inSomeIntMap
 	}
 	if reflect.DeepEqual(c.SomeStingMap, nil) {
@@ -182,7 +182,7 @@ func CreateFooBarRequestConfigFromFlags(cmd *cobra.Command) (*CreateFooBarReques
 	if err != nil {
 		return nil, fmt.Errorf("getting flag some-string-map: %w", err)
 	}
-	if !reflect.DeepEqual(inSomeStingMap, nil) {
+	if cmd.Flags().Changed("some-string-map") {
 		c.SomeStingMap = inSomeStingMap
 	}
 	if reflect.DeepEqual(c.Time, nil) {
@@ -193,8 +193,11 @@ func CreateFooBarRequestConfigFromFlags(cmd *cobra.Command) (*CreateFooBarReques
 	if err != nil {
 		return nil, fmt.Errorf("getting flag time: %w", err)
 	}
-	if !reflect.DeepEqual(inTime, time.Now()) {
+	if cmd.Flags().Changed("time") {
 		c.Time = inTime
+	}
+	if c.Name == "" {
+		return nil, fmt.Errorf("required flag name not set")
 	}
 
 	return &c, nil

@@ -5,6 +5,8 @@
 //
 //	gen-cobra-flags -input <dir> -output <dir> -package <name> [-struct <Name>] [-source-import <path>]
 //
+// When -output resolves to the same directory as -input, the generated code is
+// emitted into the source package (no source-package import or qualifier).
 // It is typically invoked via a //go:generate directive.
 package main
 
@@ -23,17 +25,15 @@ func main() {
 		pkg          = flag.String("package", "", "package name for the generated files (required)")
 		structName   = flag.String("struct", "", "restrict generation to a single struct (default: all annotated structs)")
 		sourceImport = flag.String("source-import", "", "import path of the package containing the source structs")
-		samePackage  = flag.Bool("same-package", false, "generate into the same package as the source structs")
 	)
 	flag.Parse()
 
 	if err := run(generator.Options{
-		InputDir:            *input,
-		OutputDir:           *output,
-		Package:             *pkg,
-		Struct:              *structName,
-		SourceImport:        *sourceImport,
-		SamePackageAsSource: *samePackage,
+		InputDir:     *input,
+		OutputDir:    *output,
+		Package:      *pkg,
+		Struct:       *structName,
+		SourceImport: *sourceImport,
 	}); err != nil {
 		fmt.Fprintf(os.Stderr, "gen-cobra-flags: %v\n", err)
 		os.Exit(1)

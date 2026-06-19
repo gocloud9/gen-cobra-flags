@@ -82,3 +82,97 @@ func TestGenerate_ExampleFixture(t *testing.T) {
 		}
 	}
 }
+
+// TestDeriveSourceImport verifies the import path derived for a directory from
+// its enclosing Go module. The test runs inside the gen-cobra-flags module, so
+// the current directory resolves to a known import path.
+func TestDeriveSourceImport(t *testing.T) {
+	const moduleRoot = "github.com/gocloud9/gen-cobra-flags"
+
+	// "." is internal/generator within the module.
+	got, err := deriveSourceImport(".")
+	if err != nil {
+		t.Fatalf("deriveSourceImport(.) error: %v", err)
+	}
+	if want := moduleRoot + "/internal/generator"; got != want {
+		t.Errorf("deriveSourceImport(.) = %q, want %q", got, want)
+	}
+
+	// The example fixture is a separate directory in the same module.
+	got, err = deriveSourceImport(filepath.Join("..", "..", "example"))
+	if err != nil {
+		t.Fatalf("deriveSourceImport(example) error: %v", err)
+	}
+	if want := moduleRoot + "/example"; got != want {
+		t.Errorf("deriveSourceImport(example) = %q, want %q", got, want)
+	}
+
+	// The module root resolves to the bare module path.
+	got, err = deriveSourceImport(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatalf("deriveSourceImport(root) error: %v", err)
+	}
+	if got != moduleRoot {
+		t.Errorf("deriveSourceImport(root) = %q, want %q", got, moduleRoot)
+	}
+
+	// A directory with no enclosing module returns an error.
+	if _, err := deriveSourceImport(t.TempDir()); err == nil {
+		t.Error("deriveSourceImport(tempdir) expected error, got nil")
+	}
+}
+
+// TestModulePath verifies module-path extraction from go.mod contents.
+func TestModulePath(t *testing.T) {
+	cases := []struct {
+		name string
+		in   string
+		want string
+	}{
+		{"plain", "module github.com/acme/app\n\ngo 1.22\n", "github.com/acme/app"},
+		{"trailing comment", "module github.com/acme/app // v2\n", "github.com/acme/app"},
+		{"leading comment", "// header\nmodule github.com/acme/app\n", "github.com/acme/app"},
+		{"none", "go 1.22\n", ""},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := modulePath([]byte(tc.in)); got != tc.want {
+				t.Errorf("modulePath() = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
+// TestSameDir verifies the directory-equality detection that drives the
+// same-package behavior: a path compared against itself (including via "." and
+// trailing slashes) is the same directory, while distinct directories are not.
+func TestSameDir(t *testing.T) {
+	dir := t.TempDir()
+	sub := filepath.Join(dir, "sub")
+	if err := os.Mkdir(sub, 0o755); err != nil {
+		t.Fatalf("creating subdir: %v", err)
+	}
+
+	cases := []struct {
+		name string
+		a, b string
+		want bool
+	}{
+		{"identical", dir, dir, true},
+		{"trailing slash", dir, dir + string(filepath.Separator), true},
+		{"dot-normalized", dir, filepath.Join(dir, "sub", ".."), true},
+		{"distinct", dir, sub, false},
+	}
+
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := sameDir(tc.a, tc.b)
+			if err != nil {
+				t.Fatalf("sameDir(%q, %q) error: %v", tc.a, tc.b, err)
+			}
+			if got != tc.want {
+				t.Errorf("sameDir(%q, %q) = %v, want %v", tc.a, tc.b, got, tc.want)
+			}
+		})
+	}
+}

@@ -8,7 +8,7 @@ import (
 )
 
 type {{ .Struct.Name }}Config struct {
-{{- range $f := .Struct.Fields | sortedFields }}
+{{- range $f := .Struct.Fields | exportedFields }}
     {{ $f.Name }} {{ $f | fieldToConfigTypeName }}{{ $f | getCobraTags }}
 {{- end }}
 }
@@ -63,25 +63,27 @@ func {{ .Struct.Name }}ConfigFromFlags(cmd *cobra.Command) (*{{ .Struct.Name }}C
         return nil, fmt.Errorf("getting flag {{ $f | getFlagName }}: %w", err)
     }
     {{- if $f | needsFlagAdaptor }}
-        {{- if $f | fieldConfigIsPrimitive }}
-    if in{{ $f.Name }} != {{ $f | fieldDefaultValue }} {
-        {{- else }}
-    if !reflect.DeepEqual(in{{ $f.Name }}, {{ $f | fieldDefaultValue }}) {
-        {{- end }}
+    if cmd.Flags().Changed("{{ $f | getFlagName }}") {
         c.{{ $f.Name }}, err = {{ $f | asFlagAdaptorName }}(in{{ $f.Name }})
         if err != nil {
             return nil, fmt.Errorf("adapting flag {{ $f | getFlagName }}: %w", err)
         }
     }
     {{- else }}
-        {{- if $f | fieldConfigIsPrimitive }}
-    if in{{ $f.Name }} != {{ $f | fieldDefaultValue }} {
-        {{- else }}
-    if !reflect.DeepEqual(in{{ $f.Name }}, {{ $f | fieldDefaultValue }}) {
-        {{- end }}
+    if cmd.Flags().Changed("{{ $f | getFlagName }}") {
         c.{{ $f.Name }} = in{{ $f.Name }}
     }
     {{- end }}
+{{- end }}
+{{- range $f := .Struct.Fields | requiredFields }}
+
+    {{- if $f | fieldConfigIsPrimitive }}
+    if c.{{ $f.Name }} == {{ $f | fieldZeroValue }} {
+    {{- else }}
+    if reflect.DeepEqual(c.{{ $f.Name }}, {{ $f | fieldZeroValue }}) {
+    {{- end }}
+        return nil, fmt.Errorf("required flag {{ $f | getFlagName }} not set")
+    }
 {{- end }}
 
     return &c, nil
@@ -92,8 +94,28 @@ func (c *{{ .Struct.Name }}Config) To{{ .Struct.Name }}(opts ...*{{ .Struct.Name
 
     var err error
     _ = err
-{{- range $f := .Struct.Fields | sortedFields }}
-    {{- if $f | needsConfigAdaptor }}
+{{- range $f := .Struct.Fields | exportedFields }}
+    {{- if $f | fieldIsConfigChild }}
+    {{- if $f | fieldConfigChildIsSlice }}
+    if c.{{ $f.Name }} != nil {
+        r.{{ $f.Name }} = make({{ $f | fieldDomainType }}, 0, len(c.{{ $f.Name }}))
+        for i := range c.{{ $f.Name }} {
+            converted, err := c.{{ $f.Name }}[i].{{ $f | fieldToChildMethod }}()
+            if err != nil {
+                return nil, fmt.Errorf("adapting field {{ $f.Name }}: %w", err)
+            }
+            r.{{ $f.Name }} = append(r.{{ $f.Name }}, converted)
+        }
+    }
+    {{- else }}
+    if c.{{ $f.Name }} != nil {
+        r.{{ $f.Name }}, err = c.{{ $f.Name }}.{{ $f | fieldToChildMethod }}()
+        if err != nil {
+            return nil, fmt.Errorf("adapting field {{ $f.Name }}: %w", err)
+        }
+    }
+    {{- end }}
+    {{- else if $f | needsConfigAdaptor }}
     r.{{ $f.Name }}, err = {{ $f | asConfigAdaptorName }}(c.{{ $f.Name }})
     if err != nil {
         return nil, fmt.Errorf("adapting field {{ $f.Name }}: %w", err)
@@ -119,3 +141,168 @@ func (c *{{ .Struct.Name }}Config) To{{ .Struct.Name }}(opts ...*{{ .Struct.Name
 
     return r, nil
 }
+{{- $subcommands := .Struct | subcommands }}
+{{- if $subcommands }}
+
+// {{ (index $subcommands 0) | subcommandRequiredFieldsStructName }} holds the
+// required fields hoisted from the parent {{ .Struct.Name }} that every
+// subcommand config embeds.
+type {{ (index $subcommands 0) | subcommandRequiredFieldsStructName }} struct {
+{{- range $h := (index $subcommands 0).HoistedFields }}
+    {{ $h.Name }} {{ $h.Field | fieldToConfigTypeName }} `json:"{{ $h.Field | getFlagName }}" yaml:"{{ $h.Field | getFlagName }}"`
+{{- end }}
+}
+{{- end }}
+{{- range $sc := $subcommands }}
+{{- if $sc | subcommandIsScalarSlice }}
+
+// {{ $sc | subcommandConfigStructName }} is the composed config for the
+// "{{ subcommandName $sc.Field.Name }}" subcommand of {{ $sc.Parent.Name }}: a single
+// {{ $sc | subcommandScalarFieldName }} value plus the parent's hoisted required fields.
+type {{ $sc | subcommandConfigStructName }} struct {
+    {{ $sc | subcommandRequiredFieldsStructName }} `yaml:",inline"`
+    {{ $sc | subcommandScalarFieldName }} string `json:"{{ $sc | subcommandScalarValueFlag }}" yaml:"{{ $sc | subcommandScalarValueFlag }}"`
+}
+
+// Add{{ $sc | subcommandConfigStructName }}Flags registers the flags for the
+// "{{ subcommandName $sc.Field.Name }}" subcommand of {{ $sc.Parent.Name }}: the composed-config
+// aggregate flag, the single {{ $sc | subcommandScalarValueFlag }} value flag, plus the
+// parent's required flags.
+func Add{{ $sc | subcommandConfigStructName }}Flags(cmd *cobra.Command) {
+    cmd.Flags().StringP("{{ $sc | subcommandAggregateFlag }}", "{{ $sc | subcommandAggregateShort }}", "", "{{ $sc | subcommandAggregateUsage }}")
+    cmd.Flags().StringP("{{ $sc | subcommandScalarValueFlag }}", "{{ $sc | subcommandScalarValueShort }}", "", "{{ $sc | subcommandScalarValueUsage }}")
+{{- range $f := $sc.ParentRequired }}
+    cmd.Flags().{{ $f | fieldToFlagMethod }}
+{{- end }}
+}
+
+// {{ $sc | subcommandConfigStructName }}FromFlags builds the composed
+// {{ $sc | subcommandConfigStructName }} from the "{{ subcommandName $sc.Field.Name }}" subcommand
+// flags and converts it into a {{ $sc | subcommandParentTypeRef }}. The aggregate
+// config flag is decoded first; the individual value and parent flags overlay any
+// values it set, and the value is appended to the parent's {{ $sc | subcommandSingularField }} field.
+func {{ $sc | subcommandConfigStructName }}FromFlags(cmd *cobra.Command) (*{{ $sc | subcommandParentTypeRef }}, error) {
+    cin, err := cmd.Flags().GetString("{{ $sc | subcommandAggregateFlag }}")
+    if err != nil {
+        return nil, fmt.Errorf("getting {{ subcommandName $sc.Field.Name }} config from flags: %w", err)
+    }
+
+    out, err := adaptors.JsonOrYamlToStruct[{{ $sc | subcommandConfigStructName }}]([]byte(cin))
+    if err != nil {
+        return nil, fmt.Errorf("adapting {{ subcommandName $sc.Field.Name }} config from flags: %w", err)
+    }
+
+    in{{ $sc | subcommandScalarFieldName }}, err := cmd.Flags().GetString("{{ $sc | subcommandScalarValueFlag }}")
+    if err != nil {
+        return nil, fmt.Errorf("getting flag {{ $sc | subcommandScalarValueFlag }}: %w", err)
+    }
+    if cmd.Flags().Changed("{{ $sc | subcommandScalarValueFlag }}") {
+        out.{{ $sc | subcommandScalarFieldName }} = in{{ $sc | subcommandScalarFieldName }}
+    }
+    if out.{{ $sc | subcommandScalarFieldName }} == "" {
+        return nil, fmt.Errorf("required flag {{ $sc | subcommandScalarValueFlag }} not set")
+    }
+{{- range $h := $sc.HoistedFields }}
+
+    in{{ $h.Name }}, err := cmd.Flags().{{ $h.Field | fieldToFlagGetMethod }}
+    if err != nil {
+        return nil, fmt.Errorf("getting flag {{ $h.Field | getFlagName }}: %w", err)
+    }
+    if cmd.Flags().Changed("{{ $h.Field | getFlagName }}") {
+        out.{{ $sc | subcommandRequiredFieldsStructName }}.{{ $h.Name }} = in{{ $h.Name }}
+    }
+    if out.{{ $sc | subcommandRequiredFieldsStructName }}.{{ $h.Name }} == {{ $h.Field | fieldZeroValue }} {
+        return nil, fmt.Errorf("required flag {{ $h.Field | getFlagName }} not set")
+    }
+{{- end }}
+
+    r := &{{ $sc | subcommandParentTypeRef }}{}
+{{- range $h := $sc.HoistedFields }}
+    r.{{ $h.Field.Name }} = out.{{ $sc | subcommandRequiredFieldsStructName }}.{{ $h.Name }}
+{{- end }}
+    r.{{ $sc | subcommandSingularField }} = append(r.{{ $sc | subcommandSingularField }}, out.{{ $sc | subcommandScalarFieldName }})
+
+    return r, nil
+}
+{{- else }}
+
+// {{ $sc | subcommandConfigStructName }} is the composed config for the
+// "{{ subcommandName $sc.Field.Name }}" subcommand of {{ $sc.Parent.Name }}: the
+// {{ $sc.Child.Name }} child config plus the parent's hoisted required fields.
+type {{ $sc | subcommandConfigStructName }} struct {
+    {{ $sc | subcommandRequiredFieldsStructName }} `yaml:",inline"`
+    {{ $sc | subcommandChildConfigName }} `json:",inline"`
+}
+
+// Add{{ $sc | subcommandConfigStructName }}Flags registers the flags for the
+// "{{ subcommandName $sc.Field.Name }}" subcommand of {{ $sc.Parent.Name }}: the composed-config
+// aggregate flag, the {{ $sc.Child.Name }} child's individual flags, plus the
+// parent's required flags.
+func Add{{ $sc | subcommandConfigStructName }}Flags(cmd *cobra.Command) {
+    cmd.Flags().StringP("{{ $sc | subcommandAggregateFlag }}", "{{ $sc | subcommandAggregateShort }}", "", "{{ $sc | subcommandAggregateUsage }}")
+{{- range $f := $sc | subcommandChildFlagFields }}
+    cmd.Flags().{{ $f | fieldToFlagMethod }}
+{{- end }}
+{{- range $f := $sc.ParentRequired }}
+    cmd.Flags().{{ $f | fieldToFlagMethod }}
+{{- end }}
+}
+
+// {{ $sc | subcommandConfigStructName }}FromFlags builds the composed
+// {{ $sc | subcommandConfigStructName }} from the "{{ subcommandName $sc.Field.Name }}" subcommand
+// flags and converts it into a {{ $sc | subcommandParentTypeRef }}. The aggregate
+// config flag is decoded first; individual child and parent flags overlay any
+// values it set.
+func {{ $sc | subcommandConfigStructName }}FromFlags(cmd *cobra.Command) (*{{ $sc | subcommandParentTypeRef }}, error) {
+    cin, err := cmd.Flags().GetString("{{ $sc | subcommandAggregateFlag }}")
+    if err != nil {
+        return nil, fmt.Errorf("getting {{ subcommandName $sc.Field.Name }} config from flags: %w", err)
+    }
+
+    out, err := adaptors.JsonOrYamlToStruct[{{ $sc | subcommandConfigStructName }}]([]byte(cin))
+    if err != nil {
+        return nil, fmt.Errorf("adapting {{ subcommandName $sc.Field.Name }} config from flags: %w", err)
+    }
+{{- range $f := $sc | subcommandChildFlagFields }}
+
+    in{{ $f.Name }}, err := cmd.Flags().{{ $f | fieldToFlagGetMethod }}
+    if err != nil {
+        return nil, fmt.Errorf("getting flag {{ $f | getFlagName }}: %w", err)
+    }
+    if cmd.Flags().Changed("{{ $f | getFlagName }}") {
+        out.{{ $sc | subcommandChildConfigName }}.{{ $f.Name }} = in{{ $f.Name }}
+    }
+{{- end }}
+{{- range $h := $sc.HoistedFields }}
+
+    in{{ $h.Name }}, err := cmd.Flags().{{ $h.Field | fieldToFlagGetMethod }}
+    if err != nil {
+        return nil, fmt.Errorf("getting flag {{ $h.Field | getFlagName }}: %w", err)
+    }
+    if cmd.Flags().Changed("{{ $h.Field | getFlagName }}") {
+        out.{{ $sc | subcommandRequiredFieldsStructName }}.{{ $h.Name }} = in{{ $h.Name }}
+    }
+    if out.{{ $sc | subcommandRequiredFieldsStructName }}.{{ $h.Name }} == {{ $h.Field | fieldZeroValue }} {
+        return nil, fmt.Errorf("required flag {{ $h.Field | getFlagName }} not set")
+    }
+{{- end }}
+
+    r := &{{ $sc | subcommandParentTypeRef }}{}
+{{- range $h := $sc.HoistedFields }}
+    r.{{ $h.Field.Name }} = out.{{ $sc | subcommandRequiredFieldsStructName }}.{{ $h.Name }}
+{{- end }}
+
+    converted, err := out.{{ $sc | subcommandChildConfigName }}.{{ $sc | subcommandChildToMethod }}()
+    if err != nil {
+        return nil, fmt.Errorf("converting {{ subcommandName $sc.Field.Name }} config: %w", err)
+    }
+{{- if $sc | subcommandSingularIsSlice }}
+    r.{{ $sc | subcommandSingularField }} = append(r.{{ $sc | subcommandSingularField }}, converted)
+{{- else }}
+    r.{{ $sc | subcommandSingularField }} = converted
+{{- end }}
+
+    return r, nil
+}
+{{- end }}
+{{- end }}

@@ -42,7 +42,7 @@ func SimpleRequestConfigFromFlags(cmd *cobra.Command) (*SimpleRequestConfig, err
 	if err != nil {
 		return nil, fmt.Errorf("getting flag count: %w", err)
 	}
-	if inCount != 0 {
+	if cmd.Flags().Changed("count") {
 		c.Count = inCount
 	}
 	if c.Enabled == false {
@@ -53,7 +53,7 @@ func SimpleRequestConfigFromFlags(cmd *cobra.Command) (*SimpleRequestConfig, err
 	if err != nil {
 		return nil, fmt.Errorf("getting flag enabled: %w", err)
 	}
-	if inEnabled != false {
+	if cmd.Flags().Changed("enabled") {
 		c.Enabled = inEnabled
 	}
 	if c.Title == "" {
@@ -64,7 +64,7 @@ func SimpleRequestConfigFromFlags(cmd *cobra.Command) (*SimpleRequestConfig, err
 	if err != nil {
 		return nil, fmt.Errorf("getting flag title: %w", err)
 	}
-	if inTitle != "" {
+	if cmd.Flags().Changed("title") {
 		c.Title = inTitle
 	}
 

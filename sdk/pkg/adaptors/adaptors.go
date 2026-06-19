@@ -218,6 +218,36 @@ func ToPtr[T any](t T) (*T, error) {
 	return &t, nil
 }
 
+// StringToStruct unmarshals a single JSON or YAML string into a value of type
+// T. It is used to adapt a string flag into a struct (or pointer-to-struct)
+// field on the config struct that has no dedicated CLI representation.
+func StringToStruct[T any](s string) (T, error) {
+	return JsonOrYamlToStruct[T]([]byte(s))
+}
+
+// StringSliceToStructSlice unmarshals each element of in (a repeatable string
+// flag where every value is JSON or YAML) into a value of type T, returning the
+// resulting slice. It is used to adapt a StringSlice flag into a []T or []*T
+// field that has no dedicated CLI representation. A nil/empty input yields a nil
+// slice so the field is left unset.
+func StringSliceToStructSlice[T any](in []string) ([]T, error) {
+	if len(in) == 0 {
+		return nil, nil
+	}
+
+	out := make([]T, len(in))
+	for i := range in {
+		v, err := JsonOrYamlToStruct[T]([]byte(in[i]))
+		if err != nil {
+			return nil, fmt.Errorf("decoding element %d: %w", i, err)
+		}
+
+		out[i] = v
+	}
+
+	return out, nil
+}
+
 // GetFuncNameByTypeNames returns the name of the adaptor function that converts
 // from typeNameIn to typeNameOut, or an empty string if no built-in adaptor
 // exists for that pair. Integer, unsigned, and float types are matched by

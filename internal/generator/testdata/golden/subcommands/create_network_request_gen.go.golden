@@ -1,0 +1,247 @@
+// Generated Code with gen-cobra-flags - Do Not Edit
+package subcommands
+
+import (
+	"fmt"
+	"github.com/gocloud9/gen-cobra-flags/sdk/pkg/adaptors"
+	"github.com/spf13/cobra"
+	"reflect"
+)
+
+type CreateNetworkRequestConfig struct {
+	Name        string
+	Peers       []*CreatePeerConfig
+	RemovePeers []string
+}
+
+// AddCreateNetworkRequestFlags adds flags for CreateNetworkRequest to the cobra command.
+func AddCreateNetworkRequestFlags(cmd *cobra.Command) {
+	cmd.Flags().StringP("config", "c", "", "Aggregate config for the network request.")
+	cmd.Flags().StringP("name", "n", "", "[required] Network name.")
+	cmd.Flags().StringSliceP("peers", "", nil, "Peers to add to the network.")
+	cmd.Flags().StringSliceP("remove-peers", "", nil, "Peers to remove from the network.")
+}
+
+type CreateNetworkRequestOptions struct {
+}
+
+func CreateNetworkRequestConfigFromFlags(cmd *cobra.Command) (*CreateNetworkRequestConfig, error) {
+	cin, err := cmd.Flags().GetString("config")
+	if err != nil {
+		return nil, fmt.Errorf("getting CreateNetworkRequest config from flags: %w", err)
+	}
+
+	c, err := adaptors.JsonOrYamlToStruct[CreateNetworkRequestConfig]([]byte(cin))
+	if err != nil {
+		return nil, fmt.Errorf("adapting CreateNetworkRequest config from flags: %w", err)
+	}
+	if c.Name == "" {
+		c.Name = ""
+	}
+
+	inName, err := cmd.Flags().GetString("name")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag name: %w", err)
+	}
+	if cmd.Flags().Changed("name") {
+		c.Name = inName
+	}
+	if reflect.DeepEqual(c.Peers, nil) {
+		c.Peers, err = adaptors.StringSliceToStructSlice[*CreatePeerConfig](nil)
+		if err != nil {
+			return nil, fmt.Errorf("adapting default value for flag peers: %w", err)
+		}
+	}
+
+	inPeers, err := cmd.Flags().GetStringSlice("peers")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag peers: %w", err)
+	}
+	if cmd.Flags().Changed("peers") {
+		c.Peers, err = adaptors.StringSliceToStructSlice[*CreatePeerConfig](inPeers)
+		if err != nil {
+			return nil, fmt.Errorf("adapting flag peers: %w", err)
+		}
+	}
+	if reflect.DeepEqual(c.RemovePeers, nil) {
+		c.RemovePeers = nil
+	}
+
+	inRemovePeers, err := cmd.Flags().GetStringSlice("remove-peers")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag remove-peers: %w", err)
+	}
+	if cmd.Flags().Changed("remove-peers") {
+		c.RemovePeers = inRemovePeers
+	}
+	if c.Name == "" {
+		return nil, fmt.Errorf("required flag name not set")
+	}
+
+	return &c, nil
+}
+
+func (c *CreateNetworkRequestConfig) ToCreateNetworkRequest(opts ...*CreateNetworkRequestOptions) (*CreateNetworkRequest, error) {
+	r := &CreateNetworkRequest{}
+
+	var err error
+	_ = err
+	r.Name = c.Name
+	if c.Peers != nil {
+		r.Peers = make([]*CreatePeer, 0, len(c.Peers))
+		for i := range c.Peers {
+			converted, err := c.Peers[i].ToCreatePeer()
+			if err != nil {
+				return nil, fmt.Errorf("adapting field Peers: %w", err)
+			}
+			r.Peers = append(r.Peers, converted)
+		}
+	}
+	r.RemovePeers = c.RemovePeers
+
+	return r, nil
+}
+
+// CreateNetworkRequestChildRequiredFields holds the
+// required fields hoisted from the parent CreateNetworkRequest that every
+// subcommand config embeds.
+type CreateNetworkRequestChildRequiredFields struct {
+	NetworkName string `json:"name" yaml:"name"`
+}
+
+// CreateNetworkRequestCreatePeerConfig is the composed config for the
+// "Peer" subcommand of CreateNetworkRequest: the
+// CreatePeer child config plus the parent's hoisted required fields.
+type CreateNetworkRequestCreatePeerConfig struct {
+	CreateNetworkRequestChildRequiredFields `yaml:",inline"`
+	CreatePeerConfig                        `json:",inline"`
+}
+
+// AddCreateNetworkRequestCreatePeerConfigFlags registers the flags for the
+// "Peer" subcommand of CreateNetworkRequest: the composed-config
+// aggregate flag, the CreatePeer child's individual flags, plus the
+// parent's required flags.
+func AddCreateNetworkRequestCreatePeerConfigFlags(cmd *cobra.Command) {
+	cmd.Flags().StringP("peer-config", "p", "", "The configuration for a network peer to be added.")
+	cmd.Flags().StringP("peer-region", "", "", "[required] PeerRegion for CreatePeer.")
+	cmd.Flags().StringP("peer-vpc-id", "", "", "[required] PeerVpcId for CreatePeer.")
+	cmd.Flags().StringP("name", "n", "", "[required] Network name.")
+}
+
+// CreateNetworkRequestCreatePeerConfigFromFlags builds the composed
+// CreateNetworkRequestCreatePeerConfig from the "Peer" subcommand
+// flags and converts it into a CreateNetworkRequest. The aggregate
+// config flag is decoded first; individual child and parent flags overlay any
+// values it set.
+func CreateNetworkRequestCreatePeerConfigFromFlags(cmd *cobra.Command) (*CreateNetworkRequest, error) {
+	cin, err := cmd.Flags().GetString("peer-config")
+	if err != nil {
+		return nil, fmt.Errorf("getting Peer config from flags: %w", err)
+	}
+
+	out, err := adaptors.JsonOrYamlToStruct[CreateNetworkRequestCreatePeerConfig]([]byte(cin))
+	if err != nil {
+		return nil, fmt.Errorf("adapting Peer config from flags: %w", err)
+	}
+
+	inPeerRegion, err := cmd.Flags().GetString("peer-region")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag peer-region: %w", err)
+	}
+	if cmd.Flags().Changed("peer-region") {
+		out.CreatePeerConfig.PeerRegion = inPeerRegion
+	}
+
+	inPeerVpcId, err := cmd.Flags().GetString("peer-vpc-id")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag peer-vpc-id: %w", err)
+	}
+	if cmd.Flags().Changed("peer-vpc-id") {
+		out.CreatePeerConfig.PeerVpcId = inPeerVpcId
+	}
+
+	inNetworkName, err := cmd.Flags().GetString("name")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag name: %w", err)
+	}
+	if cmd.Flags().Changed("name") {
+		out.CreateNetworkRequestChildRequiredFields.NetworkName = inNetworkName
+	}
+	if out.CreateNetworkRequestChildRequiredFields.NetworkName == "" {
+		return nil, fmt.Errorf("required flag name not set")
+	}
+
+	r := &CreateNetworkRequest{}
+	r.Name = out.CreateNetworkRequestChildRequiredFields.NetworkName
+
+	converted, err := out.CreatePeerConfig.ToCreatePeer()
+	if err != nil {
+		return nil, fmt.Errorf("converting Peer config: %w", err)
+	}
+	r.Peers = append(r.Peers, converted)
+
+	return r, nil
+}
+
+// CreateNetworkRequestRemovePeerConfig is the composed config for the
+// "RemovePeer" subcommand of CreateNetworkRequest: a single
+// RemovePeer value plus the parent's hoisted required fields.
+type CreateNetworkRequestRemovePeerConfig struct {
+	CreateNetworkRequestChildRequiredFields `yaml:",inline"`
+	RemovePeer                              string `json:"remove-peer-vpc-id" yaml:"remove-peer-vpc-id"`
+}
+
+// AddCreateNetworkRequestRemovePeerConfigFlags registers the flags for the
+// "RemovePeer" subcommand of CreateNetworkRequest: the composed-config
+// aggregate flag, the single remove-peer-vpc-id value flag, plus the
+// parent's required flags.
+func AddCreateNetworkRequestRemovePeerConfigFlags(cmd *cobra.Command) {
+	cmd.Flags().StringP("remove-peer-config", "", "", "The configuration for a network peer to be removed.")
+	cmd.Flags().StringP("remove-peer-vpc-id", "r", "", "[required] The vpc id of the peer to remove.")
+	cmd.Flags().StringP("name", "n", "", "[required] Network name.")
+}
+
+// CreateNetworkRequestRemovePeerConfigFromFlags builds the composed
+// CreateNetworkRequestRemovePeerConfig from the "RemovePeer" subcommand
+// flags and converts it into a CreateNetworkRequest. The aggregate
+// config flag is decoded first; the individual value and parent flags overlay any
+// values it set, and the value is appended to the parent's RemovePeers field.
+func CreateNetworkRequestRemovePeerConfigFromFlags(cmd *cobra.Command) (*CreateNetworkRequest, error) {
+	cin, err := cmd.Flags().GetString("remove-peer-config")
+	if err != nil {
+		return nil, fmt.Errorf("getting RemovePeer config from flags: %w", err)
+	}
+
+	out, err := adaptors.JsonOrYamlToStruct[CreateNetworkRequestRemovePeerConfig]([]byte(cin))
+	if err != nil {
+		return nil, fmt.Errorf("adapting RemovePeer config from flags: %w", err)
+	}
+
+	inRemovePeer, err := cmd.Flags().GetString("remove-peer-vpc-id")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag remove-peer-vpc-id: %w", err)
+	}
+	if cmd.Flags().Changed("remove-peer-vpc-id") {
+		out.RemovePeer = inRemovePeer
+	}
+	if out.RemovePeer == "" {
+		return nil, fmt.Errorf("required flag remove-peer-vpc-id not set")
+	}
+
+	inNetworkName, err := cmd.Flags().GetString("name")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag name: %w", err)
+	}
+	if cmd.Flags().Changed("name") {
+		out.CreateNetworkRequestChildRequiredFields.NetworkName = inNetworkName
+	}
+	if out.CreateNetworkRequestChildRequiredFields.NetworkName == "" {
+		return nil, fmt.Errorf("required flag name not set")
+	}
+
+	r := &CreateNetworkRequest{}
+	r.Name = out.CreateNetworkRequestChildRequiredFields.NetworkName
+	r.RemovePeers = append(r.RemovePeers, out.RemovePeer)
+
+	return r, nil
+}

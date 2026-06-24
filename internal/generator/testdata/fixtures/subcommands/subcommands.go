@@ -23,6 +23,8 @@ type CreateNetworkRequest struct {
 	// +cobra:short=n
 	// +cobra:usage=Network name.
 	// +cobra:required
+	// +cobra:subcommand:config:json=NetworkName
+	// +cobra:subcommand:config:yaml=NetworkName
 	Name string
 
 	// +cobra:flag=peers

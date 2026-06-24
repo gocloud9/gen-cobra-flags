@@ -106,7 +106,7 @@ func (c *CreateNetworkRequestConfig) ToCreateNetworkRequest(opts ...*CreateNetwo
 // required fields hoisted from the parent CreateNetworkRequest that every
 // subcommand config embeds.
 type CreateNetworkRequestChildRequiredFields struct {
-	NetworkName string `json:"name" yaml:"name"`
+	NetworkName string `json:"NetworkName" yaml:"NetworkName"`
 }
 
 // CreateNetworkRequestCreatePeerConfig is the composed config for the

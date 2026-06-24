@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- `+cobra:subcommand:config:json` / `+cobra:subcommand:config:yaml` markers to override the
+  `json`/`yaml` struct tags of a parent required field when it is hoisted into a subcommand's
+  composed config. Resolution precedence: the hoist override, then `+cobra:json`/`+cobra:yaml`,
+  then the cobra flag name (previous default behavior is unchanged when no override is set).
 - Extracted the generator into a testable `internal/generator` package behind a thin CLI shim
   (`cmd/gen-cobra-flags`).
 - Golden-file and compilation tests for generated output, including same-package mode and

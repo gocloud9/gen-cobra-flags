@@ -314,6 +314,33 @@ func (g *gen) funcMap() template.FuncMap {
 			}
 			return fmt.Sprintf(" `%s`", strings.Join(tags, " "))
 		},
+		// getHoistedTags returns the json/yaml struct tags for a hoisted
+		// child-required field. Precedence for each of json/yaml:
+		//  1. +cobra:subcommand:config:json / +cobra:subcommand:config:yaml
+		//     (explicit override for the hoisted field only),
+		//  2. +cobra:json / +cobra:yaml (the parent field's serialization),
+		//  3. the cobra flag name (keeps the tag consistent with the CLI flag).
+		"getHoistedTags": func(field *parse.FieldInfo) string {
+			flag := g.field(field).flag()
+
+			jsonTag := field.Markers["+cobra:subcommand:config:json"]
+			if jsonTag == "" {
+				jsonTag = field.Markers["+cobra:json"]
+			}
+			if jsonTag == "" {
+				jsonTag = flag
+			}
+
+			yamlTag := field.Markers["+cobra:subcommand:config:yaml"]
+			if yamlTag == "" {
+				yamlTag = field.Markers["+cobra:yaml"]
+			}
+			if yamlTag == "" {
+				yamlTag = flag
+			}
+
+			return fmt.Sprintf("json:%q yaml:%q", jsonTag, yamlTag)
+		},
 		"onlyCobraFlags": func(in map[string]*parse.FieldInfo) map[string]*parse.FieldInfo {
 			out := map[string]*parse.FieldInfo{}
 			for i := range in {

@@ -149,7 +149,7 @@ func (c *{{ .Struct.Name }}Config) To{{ .Struct.Name }}(opts ...*{{ .Struct.Name
 // subcommand config embeds.
 type {{ (index $subcommands 0) | subcommandRequiredFieldsStructName }} struct {
 {{- range $h := (index $subcommands 0).HoistedFields }}
-    {{ $h.Name }} {{ $h.Field | fieldToConfigTypeName }} `json:"{{ $h.Field | getFlagName }}" yaml:"{{ $h.Field | getFlagName }}"`
+    {{ $h.Name }} {{ $h.Field | fieldToConfigTypeName }} `{{ $h.Field | getHoistedTags }}`
 {{- end }}
 }
 {{- end }}

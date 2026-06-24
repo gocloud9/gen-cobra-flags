@@ -71,6 +71,8 @@ carries a `+cobra:flag` marker.
 | `+cobra:subcommand:config:flag` | no | Name of the composed-config aggregate flag for a subcommand field (defaults to `<child>-config`). See [`+cobra:subcommand`](#cobrasubcommand). |
 | `+cobra:subcommand:config:short` | no | Short flag for the composed-config aggregate flag. |
 | `+cobra:subcommand:config:usage` | no | Usage text for the composed-config aggregate flag. |
+| `+cobra:subcommand:config:json` | no | JSON tag for this required field when it is **hoisted** into a subcommand's composed config (overrides the default). See [Hoisted field tags](#hoisted-field-tags). |
+| `+cobra:subcommand:config:yaml` | no | YAML tag for this required field when it is **hoisted** into a subcommand's composed config (overrides the default). See [Hoisted field tags](#hoisted-field-tags). |
 | `+cobra:subcommand:value:flag` | no | Name of the single value flag for a **scalar-slice** subcommand (a `[]string`-style field with no struct child). See [Scalar-slice subcommands](#scalar-slice-subcommands). |
 | `+cobra:subcommand:value:short` | no | Short flag for the scalar-slice value flag. |
 | `+cobra:subcommand:value:usage` | no | Usage text for the scalar-slice value flag. |
@@ -162,9 +164,11 @@ child config with the parent's required ("hoisted") fields:
 - `PChildRequiredFields` — emitted once per parent (shared across all its subcommands), holding
   the parent's `+cobra:required` fields renamed by the `+cobra:subcommand:config:prefix` marker
   (see below). For example with `prefix=Vpc`, the parent's `Name` field becomes `VpcName`. Each
-  hoisted field carries `json`/`yaml` struct tags matching its flag name (e.g.
+  hoisted field carries `json`/`yaml` struct tags that default to the field's flag name (e.g.
   `json:"vpc-name" yaml:"vpc-name"`), so the hoisted fields are settable through the composed
-  aggregate config flag as well as their individual flags.
+  aggregate config flag as well as their individual flags. The tags can be overridden per field
+  with `+cobra:subcommand:config:json` / `+cobra:subcommand:config:yaml` — see
+  [Hoisted field tags](#hoisted-field-tags).
 - `AddP<C>ConfigFlags(cmd)` — registers a single **composed-config aggregate flag** (a
   JSON/YAML string flag, see `+cobra:subcommand:config:*` below), the child `C`'s individual
   flags (its `+cobra:required` fields), and the parent `P`'s `+cobra:required` flags (under
@@ -210,6 +214,28 @@ The prefix does **not** affect the generated *type* names, which always use the 
 name verbatim. When the marker is absent, parent fields are hoisted under their original names.
 
 Both `+cobra:config:child` and `+cobra:subcommand` accept an explicit `=false` to disable.
+
+### Hoisted field tags
+
+`+cobra:subcommand:config:json` / `+cobra:subcommand:config:yaml` are placed on a **parent
+required field** to override the `json`/`yaml` struct tags emitted for that field when it is
+hoisted into a subcommand's `PChildRequiredFields` struct. This is independent of the field's
+CLI flag name and of its regular (`+cobra:json` / `+cobra:yaml`) config-struct tags.
+
+The tag for each of json/yaml is resolved with the following precedence:
+
+1. `+cobra:subcommand:config:json` / `+cobra:subcommand:config:yaml` (the explicit hoist override);
+2. `+cobra:json` / `+cobra:yaml` (the parent field's regular serialization tag);
+3. the cobra flag name (the default, kept consistent with the CLI flag).
+
+For example, a parent `Name` field with `+cobra:flag=mw-name`, `+cobra:subcommand:config:prefix=Mw`
+and `+cobra:subcommand:config:json=MwName` / `+cobra:subcommand:config:yaml=MwName` hoists as:
+
+```go
+MwName string `json:"MwName" yaml:"MwName"`
+```
+
+while the flag stays `--mw-name` and the top-level config field keeps its own `+cobra:json` tag.
 
 ### Scalar-slice subcommands
 

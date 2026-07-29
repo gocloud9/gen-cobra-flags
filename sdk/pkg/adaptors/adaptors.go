@@ -8,12 +8,38 @@ import (
 	"encoding/json"
 	"fmt"
 	"net"
+	"os"
 	"regexp"
 	"strconv"
 	"time"
 
 	"go.yaml.in/yaml/v3"
 )
+
+// ResolveConfigInput resolves the raw bytes to decode for a struct-level config
+// flag value. The value may be either a path to a JSON/YAML file or the literal
+// JSON/YAML content itself:
+//
+//   - If cin is empty, it returns (nil, nil). No config was supplied; this is not
+//     an error, and decoding nil yields a zero-valued config so downstream
+//     required-flag checks still apply.
+//   - If cin points to an existing regular file (absolute or relative to the
+//     current working directory), the file's contents are returned.
+//   - Otherwise cin is treated as literal inline JSON/YAML content and returned
+//     as-is.
+func ResolveConfigInput(cin string) ([]byte, error) {
+	if cin == "" {
+		return nil, nil
+	}
+	if info, err := os.Stat(cin); err == nil && !info.IsDir() {
+		data, err := os.ReadFile(cin)
+		if err != nil {
+			return nil, fmt.Errorf("reading config file %q: %w", cin, err)
+		}
+		return data, nil
+	}
+	return []byte(cin), nil
+}
 
 // JsonOrYamlToStruct unmarshals data into a value of type T. If data is valid
 // JSON it is decoded as JSON, otherwise it is decoded as YAML. It is used to

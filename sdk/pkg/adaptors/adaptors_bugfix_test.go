@@ -1,6 +1,8 @@
 package adaptors_test
 
 import (
+	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"testing"
@@ -8,6 +10,95 @@ import (
 
 	"github.com/gocloud9/gen-cobra-flags/sdk/pkg/adaptors"
 )
+
+func TestResolveConfigInput(t *testing.T) {
+	t.Run("empty returns nil without error", func(t *testing.T) {
+		got, err := adaptors.ResolveConfigInput("")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != nil {
+			t.Errorf("got %q, want nil", string(got))
+		}
+	})
+
+	t.Run("absolute path reads file contents", func(t *testing.T) {
+		dir := t.TempDir()
+		p := filepath.Join(dir, "config.json")
+		content := `{"name":"foo","count":3}`
+		if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
+			t.Fatalf("writing temp file: %v", err)
+		}
+		got, err := adaptors.ResolveConfigInput(p)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(got) != content {
+			t.Errorf("got %q, want %q", string(got), content)
+		}
+	})
+
+	t.Run("yaml file contents", func(t *testing.T) {
+		dir := t.TempDir()
+		p := filepath.Join(dir, "config.yaml")
+		content := "name: bar\ncount: 7\n"
+		if err := os.WriteFile(p, []byte(content), 0o600); err != nil {
+			t.Fatalf("writing temp file: %v", err)
+		}
+		got, err := adaptors.ResolveConfigInput(p)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(got) != content {
+			t.Errorf("got %q, want %q", string(got), content)
+		}
+	})
+
+	t.Run("relative path reads file contents", func(t *testing.T) {
+		dir := t.TempDir()
+		content := `{"name":"rel","count":1}`
+		if err := os.WriteFile(filepath.Join(dir, "rel.json"), []byte(content), 0o600); err != nil {
+			t.Fatalf("writing temp file: %v", err)
+		}
+		wd, err := os.Getwd()
+		if err != nil {
+			t.Fatalf("getwd: %v", err)
+		}
+		t.Cleanup(func() { _ = os.Chdir(wd) })
+		if err := os.Chdir(dir); err != nil {
+			t.Fatalf("chdir: %v", err)
+		}
+		got, err := adaptors.ResolveConfigInput("rel.json")
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(got) != content {
+			t.Errorf("got %q, want %q", string(got), content)
+		}
+	})
+
+	t.Run("inline json content when not a path", func(t *testing.T) {
+		content := `{"name":"inline","count":9}`
+		got, err := adaptors.ResolveConfigInput(content)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(got) != content {
+			t.Errorf("got %q, want %q", string(got), content)
+		}
+	})
+
+	t.Run("directory is treated as inline content", func(t *testing.T) {
+		dir := t.TempDir()
+		got, err := adaptors.ResolveConfigInput(dir)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if string(got) != dir {
+			t.Errorf("got %q, want %q", string(got), dir)
+		}
+	})
+}
 
 func TestJsonOrYamlToStruct(t *testing.T) {
 	type payload struct {
@@ -34,6 +125,26 @@ func TestJsonOrYamlToStruct(t *testing.T) {
 		want := payload{Name: "bar", Count: 7}
 		if got != want {
 			t.Errorf("got %+v, want %+v", got, want)
+		}
+	})
+
+	t.Run("nil yields zero value without error", func(t *testing.T) {
+		got, err := adaptors.JsonOrYamlToStruct[payload](nil)
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != (payload{}) {
+			t.Errorf("got %+v, want zero value", got)
+		}
+	})
+
+	t.Run("empty bytes yield zero value without error", func(t *testing.T) {
+		got, err := adaptors.JsonOrYamlToStruct[payload]([]byte{})
+		if err != nil {
+			t.Fatalf("unexpected error: %v", err)
+		}
+		if got != (payload{}) {
+			t.Errorf("got %+v, want zero value", got)
 		}
 	})
 

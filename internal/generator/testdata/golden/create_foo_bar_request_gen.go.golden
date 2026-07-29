@@ -1,4 +1,4 @@
-// Generated Code with gen-cobra-flags - Do Not Edit
+// Code generated with gen-cobra-flags - Do Not Edit
 package generated
 
 import (
@@ -53,7 +53,12 @@ func CreateFooBarRequestConfigFromFlags(cmd *cobra.Command) (*CreateFooBarReques
 		return nil, fmt.Errorf("getting CreateFooBarRequest config from flags: %w", err)
 	}
 
-	c, err := adaptors.JsonOrYamlToStruct[CreateFooBarRequestConfig]([]byte(cin))
+	cData, err := adaptors.ResolveConfigInput(cin)
+	if err != nil {
+		return nil, fmt.Errorf("resolving CreateFooBarRequest config input: %w", err)
+	}
+
+	c, err := adaptors.JsonOrYamlToStruct[CreateFooBarRequestConfig](cData)
 	if err != nil {
 		return nil, fmt.Errorf("adapting CreateFooBarRequest config from flags: %w", err)
 	}

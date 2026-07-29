@@ -1,4 +1,4 @@
-// Generated Code with gen-cobra-flags - Do Not Edit
+// Code generated with gen-cobra-flags - Do Not Edit
 package subcommands
 
 import (
@@ -31,7 +31,12 @@ func CreateNetworkRequestConfigFromFlags(cmd *cobra.Command) (*CreateNetworkRequ
 		return nil, fmt.Errorf("getting CreateNetworkRequest config from flags: %w", err)
 	}
 
-	c, err := adaptors.JsonOrYamlToStruct[CreateNetworkRequestConfig]([]byte(cin))
+	cData, err := adaptors.ResolveConfigInput(cin)
+	if err != nil {
+		return nil, fmt.Errorf("resolving CreateNetworkRequest config input: %w", err)
+	}
+
+	c, err := adaptors.JsonOrYamlToStruct[CreateNetworkRequestConfig](cData)
 	if err != nil {
 		return nil, fmt.Errorf("adapting CreateNetworkRequest config from flags: %w", err)
 	}
@@ -139,7 +144,12 @@ func CreateNetworkRequestCreatePeerConfigFromFlags(cmd *cobra.Command) (*CreateN
 		return nil, fmt.Errorf("getting Peer config from flags: %w", err)
 	}
 
-	out, err := adaptors.JsonOrYamlToStruct[CreateNetworkRequestCreatePeerConfig]([]byte(cin))
+	cData, err := adaptors.ResolveConfigInput(cin)
+	if err != nil {
+		return nil, fmt.Errorf("resolving Peer config input: %w", err)
+	}
+
+	out, err := adaptors.JsonOrYamlToStruct[CreateNetworkRequestCreatePeerConfig](cData)
 	if err != nil {
 		return nil, fmt.Errorf("adapting Peer config from flags: %w", err)
 	}
@@ -212,7 +222,12 @@ func CreateNetworkRequestRemovePeerConfigFromFlags(cmd *cobra.Command) (*CreateN
 		return nil, fmt.Errorf("getting RemovePeer config from flags: %w", err)
 	}
 
-	out, err := adaptors.JsonOrYamlToStruct[CreateNetworkRequestRemovePeerConfig]([]byte(cin))
+	cData, err := adaptors.ResolveConfigInput(cin)
+	if err != nil {
+		return nil, fmt.Errorf("resolving RemovePeer config input: %w", err)
+	}
+
+	out, err := adaptors.JsonOrYamlToStruct[CreateNetworkRequestRemovePeerConfig](cData)
 	if err != nil {
 		return nil, fmt.Errorf("adapting RemovePeer config from flags: %w", err)
 	}

@@ -153,6 +153,142 @@ func TestGenerate_FixturesCompile(t *testing.T) {
 	}
 }
 
+// TestGenerate_ConfigFileIsRead is a runtime regression test for the bug where
+// the struct-level config flag value (e.g. -s/--simple, -c/--config) was passed
+// to the decoder as literal content instead of being read from the file it
+// points to. It generates the "simple" fixture into a throwaway module, writes a
+// Go test into that module that executes SimpleRequestConfigFromFlags with the
+// config flag pointing at a real file, and runs `go test`. Without the
+// ResolveConfigInput fix, decoding a file path as JSON/YAML yields a zero struct
+// and the assertions fail.
+func TestGenerate_ConfigFileIsRead(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping runtime check in -short mode")
+	}
+
+	root := repoRoot(t)
+	sdkDir := filepath.Join(root, "sdk")
+
+	tmp := t.TempDir()
+	const modPath = "fixture.test/simplerun"
+	const pkg = "simple"
+
+	goMod := strings.Join([]string{
+		"module " + modPath,
+		"",
+		"go " + toolchainGoVersion(),
+		"",
+		"require (",
+		"\tgithub.com/gocloud9/gen-cobra-flags/sdk v0.0.0-pre",
+		"\tgithub.com/spf13/cobra v1.10.2",
+		")",
+		"",
+		"replace github.com/gocloud9/gen-cobra-flags/sdk => " + sdkDir,
+		"",
+	}, "\n")
+	mustWrite(t, filepath.Join(tmp, "go.mod"), goMod)
+
+	pkgDir := filepath.Join(tmp, pkg)
+	mustMkdir(t, pkgDir)
+
+	fixtureSrc := filepath.Join(root, "internal", "generator", "testdata", "fixtures", "simple")
+	srcFiles, _ := filepath.Glob(filepath.Join(fixtureSrc, "*.go"))
+	if len(srcFiles) == 0 {
+		t.Fatalf("no source files in fixture %s", fixtureSrc)
+	}
+	for _, sf := range srcFiles {
+		copyFile(t, sf, filepath.Join(pkgDir, filepath.Base(sf)))
+	}
+
+	if err := Generate(Options{
+		InputDir:            pkgDir,
+		OutputDir:           pkgDir,
+		Package:             pkg,
+		SamePackageAsSource: true,
+	}); err != nil {
+		t.Fatalf("Generate failed: %v", err)
+	}
+
+	// Runtime test living inside the generated package. It builds a cobra
+	// command, points the config flag at a file, and asserts the file contents
+	// were read and decoded (not the path string).
+	runtimeTest := `package simple
+
+import (
+	"os"
+	"path/filepath"
+	"testing"
+
+	"github.com/spf13/cobra"
+)
+
+func TestConfigFlagReadsFile(t *testing.T) {
+	dir := t.TempDir()
+	cfg := filepath.Join(dir, "cfg.json")
+	if err := os.WriteFile(cfg, []byte(` + "`" + `{"Title":"from-file","Count":42,"Enabled":true}` + "`" + `), 0o600); err != nil {
+		t.Fatalf("write cfg: %v", err)
+	}
+
+	cmd := &cobra.Command{Use: "x"}
+	AddSimpleRequestFlags(cmd)
+	cmd.SetArgs([]string{"-s", cfg})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+
+	c, err := SimpleRequestConfigFromFlags(cmd)
+	if err != nil {
+		t.Fatalf("FromFlags: %v", err)
+	}
+	if c.Title != "from-file" {
+		t.Errorf("Title = %q, want %q (config file was not read)", c.Title, "from-file")
+	}
+	if c.Count != 42 {
+		t.Errorf("Count = %d, want 42 (config file was not read)", c.Count)
+	}
+	if !c.Enabled {
+		t.Errorf("Enabled = false, want true (config file was not read)")
+	}
+}
+
+func TestConfigFlagInlineContentStillWorks(t *testing.T) {
+	cmd := &cobra.Command{Use: "x"}
+	AddSimpleRequestFlags(cmd)
+	cmd.SetArgs([]string{"-s", ` + "`" + `{"Title":"inline","Count":7}` + "`" + `})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	c, err := SimpleRequestConfigFromFlags(cmd)
+	if err != nil {
+		t.Fatalf("FromFlags: %v", err)
+	}
+	if c.Title != "inline" || c.Count != 7 {
+		t.Errorf("got Title=%q Count=%d, want inline/7", c.Title, c.Count)
+	}
+}
+
+func TestConfigFlagEmptyDoesNotFail(t *testing.T) {
+	cmd := &cobra.Command{Use: "x"}
+	AddSimpleRequestFlags(cmd)
+	cmd.SetArgs([]string{})
+	if err := cmd.Execute(); err != nil {
+		t.Fatalf("execute: %v", err)
+	}
+	c, err := SimpleRequestConfigFromFlags(cmd)
+	if err != nil {
+		t.Fatalf("FromFlags with no config: %v", err)
+	}
+	if c.Title != "" || c.Count != 0 || c.Enabled {
+		t.Errorf("expected zero-valued config, got %+v", *c)
+	}
+}
+`
+	mustWrite(t, filepath.Join(pkgDir, "runtime_test.go"), runtimeTest)
+
+	runGo(t, tmp, "mod", "tidy")
+	runGo(t, tmp, "test", "./...")
+}
+
 func repoRoot(t *testing.T) string {
 	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", ".."))

@@ -37,7 +37,12 @@ func {{ .Struct.Name }}ConfigFromFlags(cmd *cobra.Command) (*{{ .Struct.Name }}C
         return nil, fmt.Errorf("getting {{ .Struct.Name }} config from flags: %w", err)
     }
 
-    c, err := {{ .Struct | structToFlagAdaptorName }}([]byte(cin))
+    cData, err := adaptors.ResolveConfigInput(cin)
+    if err != nil {
+        return nil, fmt.Errorf("resolving {{ .Struct.Name }} config input: %w", err)
+    }
+
+    c, err := {{ .Struct | structToFlagAdaptorName }}(cData)
     if err != nil {
         return nil, fmt.Errorf("adapting {{ .Struct.Name }} config from flags: %w", err)
     }
@@ -187,7 +192,12 @@ func {{ $sc | subcommandConfigStructName }}FromFlags(cmd *cobra.Command) (*{{ $s
         return nil, fmt.Errorf("getting {{ subcommandName $sc.Field.Name }} config from flags: %w", err)
     }
 
-    out, err := adaptors.JsonOrYamlToStruct[{{ $sc | subcommandConfigStructName }}]([]byte(cin))
+    cData, err := adaptors.ResolveConfigInput(cin)
+    if err != nil {
+        return nil, fmt.Errorf("resolving {{ subcommandName $sc.Field.Name }} config input: %w", err)
+    }
+
+    out, err := adaptors.JsonOrYamlToStruct[{{ $sc | subcommandConfigStructName }}](cData)
     if err != nil {
         return nil, fmt.Errorf("adapting {{ subcommandName $sc.Field.Name }} config from flags: %w", err)
     }
@@ -259,7 +269,12 @@ func {{ $sc | subcommandConfigStructName }}FromFlags(cmd *cobra.Command) (*{{ $s
         return nil, fmt.Errorf("getting {{ subcommandName $sc.Field.Name }} config from flags: %w", err)
     }
 
-    out, err := adaptors.JsonOrYamlToStruct[{{ $sc | subcommandConfigStructName }}]([]byte(cin))
+    cData, err := adaptors.ResolveConfigInput(cin)
+    if err != nil {
+        return nil, fmt.Errorf("resolving {{ subcommandName $sc.Field.Name }} config input: %w", err)
+    }
+
+    out, err := adaptors.JsonOrYamlToStruct[{{ $sc | subcommandConfigStructName }}](cData)
     if err != nil {
         return nil, fmt.Errorf("adapting {{ subcommandName $sc.Field.Name }} config from flags: %w", err)
     }

@@ -1,4 +1,4 @@
-// Generated Code with gen-cobra-flags - Do Not Edit
+// Code generated with gen-cobra-flags - Do Not Edit
 package simple
 
 import (
@@ -30,7 +30,12 @@ func SimpleRequestConfigFromFlags(cmd *cobra.Command) (*SimpleRequestConfig, err
 		return nil, fmt.Errorf("getting SimpleRequest config from flags: %w", err)
 	}
 
-	c, err := adaptors.JsonOrYamlToStruct[SimpleRequestConfig]([]byte(cin))
+	cData, err := adaptors.ResolveConfigInput(cin)
+	if err != nil {
+		return nil, fmt.Errorf("resolving SimpleRequest config input: %w", err)
+	}
+
+	c, err := adaptors.JsonOrYamlToStruct[SimpleRequestConfig](cData)
 	if err != nil {
 		return nil, fmt.Errorf("adapting SimpleRequest config from flags: %w", err)
 	}

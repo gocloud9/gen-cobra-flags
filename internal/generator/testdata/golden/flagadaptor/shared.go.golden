@@ -1,4 +1,4 @@
-// Generated Code with gen-cobra-flags - Do Not Edit
+// Code generated with gen-cobra-flags - Do Not Edit
 package flagadaptor
 
 var adaptorBuildTags func([]string) (map[string]string, error)

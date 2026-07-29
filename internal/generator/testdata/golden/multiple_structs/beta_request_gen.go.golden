@@ -1,4 +1,4 @@
-// Generated Code with gen-cobra-flags - Do Not Edit
+// Code generated with gen-cobra-flags - Do Not Edit
 package multi
 
 import (
@@ -26,7 +26,12 @@ func BetaRequestConfigFromFlags(cmd *cobra.Command) (*BetaRequestConfig, error) 
 		return nil, fmt.Errorf("getting BetaRequest config from flags: %w", err)
 	}
 
-	c, err := adaptors.JsonOrYamlToStruct[BetaRequestConfig]([]byte(cin))
+	cData, err := adaptors.ResolveConfigInput(cin)
+	if err != nil {
+		return nil, fmt.Errorf("resolving BetaRequest config input: %w", err)
+	}
+
+	c, err := adaptors.JsonOrYamlToStruct[BetaRequestConfig](cData)
 	if err != nil {
 		return nil, fmt.Errorf("adapting BetaRequest config from flags: %w", err)
 	}

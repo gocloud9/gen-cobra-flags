@@ -1,4 +1,4 @@
-// Generated Code with gen-cobra-flags - Do Not Edit
+// Code generated with gen-cobra-flags - Do Not Edit
 package flagadaptor
 
 import (
@@ -29,7 +29,12 @@ func FilterRequestConfigFromFlags(cmd *cobra.Command) (*FilterRequestConfig, err
 		return nil, fmt.Errorf("getting FilterRequest config from flags: %w", err)
 	}
 
-	c, err := adaptors.JsonOrYamlToStruct[FilterRequestConfig]([]byte(cin))
+	cData, err := adaptors.ResolveConfigInput(cin)
+	if err != nil {
+		return nil, fmt.Errorf("resolving FilterRequest config input: %w", err)
+	}
+
+	c, err := adaptors.JsonOrYamlToStruct[FilterRequestConfig](cData)
 	if err != nil {
 		return nil, fmt.Errorf("adapting FilterRequest config from flags: %w", err)
 	}

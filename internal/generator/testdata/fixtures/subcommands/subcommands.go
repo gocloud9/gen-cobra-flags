@@ -1,5 +1,13 @@
 package subcommands
 
+// PeerMetadata is a nested struct inside CreatePeer. It is a required field
+// that is itself a struct — exercises the needsFlagAdaptor path in the
+// subcommand child flag loop.
+type PeerMetadata struct {
+	Owner string
+	Team  string
+}
+
 // CreatePeer is a child resource referenced by CreateNetworkRequest. It is not
 // directly enabled; it is pulled into generation via the +cobra:config:child /
 // +cobra:subcommand markers on the parent field. Its +cobra:required fields are
@@ -9,7 +17,9 @@ type CreatePeer struct {
 	PeerVpcId string
 	// +cobra:required
 	PeerRegion string
-	Note       string
+	// +cobra:required
+	Metadata *PeerMetadata
+	Note     string
 }
 
 // CreateNetworkRequest is the enabled top-level request.

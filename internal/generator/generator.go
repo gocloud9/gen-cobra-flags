@@ -645,7 +645,7 @@ func deriveSourceImport(dir string) (string, error) {
 func findModule(dir string) (modRoot, modPath string, err error) {
 	for {
 		goMod := filepath.Join(dir, "go.mod")
-		if data, readErr := os.ReadFile(goMod); readErr == nil {
+		if data, readErr := os.ReadFile(goMod); readErr == nil { //nolint:gosec // path is derived from go.mod discovery, not user input
 			mp := modulePath(data)
 			if mp == "" {
 				return "", "", fmt.Errorf("go.mod at %q has no module directive", goMod)

@@ -296,7 +296,7 @@ func (s *Struct) enabled() bool {
 // hasFlag reports whether the struct declares an aggregate +cobra:flag. Child
 // structs synthesized for +cobra:config:child have no aggregate flag, so the
 // generated config-from-flags path must skip reading/decoding it.
-func (s *Struct) hasFlag() bool {
+func (s *Struct) hasFlag() bool { //nolint:unused // reserved for future use
 	_, ok := s.Markers["+cobra:flag"]
 	return ok
 }

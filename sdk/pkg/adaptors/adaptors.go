@@ -32,7 +32,7 @@ func ResolveConfigInput(cin string) ([]byte, error) {
 		return nil, nil
 	}
 	if info, err := os.Stat(cin); err == nil && !info.IsDir() {
-		data, err := os.ReadFile(cin)
+		data, err := os.ReadFile(cin) //nolint:gosec // cin is a user-supplied config file path; reading it is intentional
 		if err != nil {
 			return nil, fmt.Errorf("reading config file %q: %w", cin, err)
 		}

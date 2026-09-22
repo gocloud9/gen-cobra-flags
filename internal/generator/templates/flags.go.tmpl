@@ -284,9 +284,18 @@ func {{ $sc | subcommandConfigStructName }}FromFlags(cmd *cobra.Command) (*{{ $s
     if err != nil {
         return nil, fmt.Errorf("getting flag {{ $f | getFlagName }}: %w", err)
     }
+    {{- if $f | needsFlagAdaptor }}
+    if cmd.Flags().Changed("{{ $f | getFlagName }}") {
+        out.{{ $sc | subcommandChildConfigName }}.{{ $f.Name }}, err = {{ $f | asFlagAdaptorName }}(in{{ $f.Name }})
+        if err != nil {
+            return nil, fmt.Errorf("adapting flag {{ $f | getFlagName }}: %w", err)
+        }
+    }
+    {{- else }}
     if cmd.Flags().Changed("{{ $f | getFlagName }}") {
         out.{{ $sc | subcommandChildConfigName }}.{{ $f.Name }} = in{{ $f.Name }}
     }
+    {{- end }}
 {{- end }}
 {{- range $h := $sc.HoistedFields }}
 

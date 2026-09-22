@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"github.com/gocloud9/gen-cobra-flags/sdk/pkg/adaptors"
 	"github.com/spf13/cobra"
+	"reflect"
 )
 
 type CreatePeerConfig struct {
+	Metadata   *PeerMetadata
 	Note       string
 	PeerRegion string
 	PeerVpcId  string
@@ -16,6 +18,7 @@ type CreatePeerConfig struct {
 // AddCreatePeerFlags adds flags for CreatePeer to the cobra command.
 func AddCreatePeerFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP("create-peer-config", "", "", "Aggregate JSON/YAML config for CreatePeer.")
+	cmd.Flags().StringP("metadata", "", "", "[required] Metadata for CreatePeer.")
 	cmd.Flags().StringP("peer-region", "", "", "[required] PeerRegion for CreatePeer.")
 	cmd.Flags().StringP("peer-vpc-id", "", "", "[required] PeerVpcId for CreatePeer.")
 }
@@ -37,6 +40,23 @@ func CreatePeerConfigFromFlags(cmd *cobra.Command) (*CreatePeerConfig, error) {
 	c, err := adaptors.JsonOrYamlToStruct[CreatePeerConfig](cData)
 	if err != nil {
 		return nil, fmt.Errorf("adapting CreatePeer config from flags: %w", err)
+	}
+	if reflect.DeepEqual(c.Metadata, nil) {
+		c.Metadata, err = adaptors.StringToStruct[*PeerMetadata]("")
+		if err != nil {
+			return nil, fmt.Errorf("adapting default value for flag metadata: %w", err)
+		}
+	}
+
+	inMetadata, err := cmd.Flags().GetString("metadata")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag metadata: %w", err)
+	}
+	if cmd.Flags().Changed("metadata") {
+		c.Metadata, err = adaptors.StringToStruct[*PeerMetadata](inMetadata)
+		if err != nil {
+			return nil, fmt.Errorf("adapting flag metadata: %w", err)
+		}
 	}
 	if c.PeerRegion == "" {
 		c.PeerRegion = ""
@@ -60,6 +80,9 @@ func CreatePeerConfigFromFlags(cmd *cobra.Command) (*CreatePeerConfig, error) {
 	if cmd.Flags().Changed("peer-vpc-id") {
 		c.PeerVpcId = inPeerVpcId
 	}
+	if reflect.DeepEqual(c.Metadata, nil) {
+		return nil, fmt.Errorf("required flag metadata not set")
+	}
 	if c.PeerRegion == "" {
 		return nil, fmt.Errorf("required flag peer-region not set")
 	}
@@ -75,6 +98,7 @@ func (c *CreatePeerConfig) ToCreatePeer(opts ...*CreatePeerOptions) (*CreatePeer
 
 	var err error
 	_ = err
+	r.Metadata = c.Metadata
 	r.Note = c.Note
 	r.PeerRegion = c.PeerRegion
 	r.PeerVpcId = c.PeerVpcId

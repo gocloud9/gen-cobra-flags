@@ -28,7 +28,7 @@ directory is on your `PATH`.
    ```go
    package simple
 
-   //go:generate gen-cobra-flags -input ./ -struct SimpleRequest -output ./ -package simple
+   //go:generate gen-cobra-flags -input ./ -struct SimpleRequest -output ./
 
    // SimpleRequest is a minimal annotated struct.
    // +cobra:flag=simple
@@ -90,14 +90,15 @@ gen-cobra-flags [flags]
 | ---------------- | ------- | -------------------------------------------------------------------- |
 | `-input`         | `.`     | Directory or file to parse for annotated structs.                    |
 | `-output`        | `.`     | Directory (or file) to write generated files to.                     |
-| `-package`       | —       | Package name for the generated files. **Required.**                  |
+| `-package`       | —       | Package name for the generated files. Optional when `-input` and `-output` are the same directory (derived from the input package); required otherwise. |
 | `-struct`        | (all)   | Restrict generation to a single struct. Defaults to all annotated.   |
 | `-source-import` | (derived) | Import path of the package containing the source structs. Auto-derived from the input directory's Go module when generating into a different package; set it to override the derived value. |
 
 When `-output` resolves to the same directory as `-input`, the generated code is emitted into
-the source package, so no source-package import or qualifier is produced. When generating into
-a separate directory, the generator imports the source package (its import path is derived
-automatically from the input directory's Go module, or taken from `-source-import` when set).
+the source package, so no source-package import or qualifier is produced, and `-package` is
+optional (the package name is derived from the input directory). When generating into
+a separate directory, `-package` is required, and the source package import path is derived
+automatically from the input directory's Go module, or taken from `-source-import` when set.
 
 
 ## Markers

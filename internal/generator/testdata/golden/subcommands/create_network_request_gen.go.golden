@@ -128,6 +128,7 @@ type CreateNetworkRequestCreatePeerConfig struct {
 // parent's required flags.
 func AddCreateNetworkRequestCreatePeerConfigFlags(cmd *cobra.Command) {
 	cmd.Flags().StringP("peer-config", "p", "", "The configuration for a network peer to be added.")
+	cmd.Flags().StringP("metadata", "", "", "[required] Metadata for CreatePeer.")
 	cmd.Flags().StringP("peer-region", "", "", "[required] PeerRegion for CreatePeer.")
 	cmd.Flags().StringP("peer-vpc-id", "", "", "[required] PeerVpcId for CreatePeer.")
 	cmd.Flags().StringP("name", "n", "", "[required] Network name.")
@@ -152,6 +153,17 @@ func CreateNetworkRequestCreatePeerConfigFromFlags(cmd *cobra.Command) (*CreateN
 	out, err := adaptors.JsonOrYamlToStruct[CreateNetworkRequestCreatePeerConfig](cData)
 	if err != nil {
 		return nil, fmt.Errorf("adapting Peer config from flags: %w", err)
+	}
+
+	inMetadata, err := cmd.Flags().GetString("metadata")
+	if err != nil {
+		return nil, fmt.Errorf("getting flag metadata: %w", err)
+	}
+	if cmd.Flags().Changed("metadata") {
+		out.CreatePeerConfig.Metadata, err = adaptors.StringToStruct[*PeerMetadata](inMetadata)
+		if err != nil {
+			return nil, fmt.Errorf("adapting flag metadata: %w", err)
+		}
 	}
 
 	inPeerRegion, err := cmd.Flags().GetString("peer-region")

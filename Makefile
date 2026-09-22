@@ -12,7 +12,7 @@
 GO            ?= go
 GOBIN         := $(shell $(GO) env GOPATH)/bin
 GOLANGCI_LINT := $(GOBIN)/golangci-lint
-GOLANGCI_VERSION ?= v2.12.2
+GOLANGCI_VERSION ?= v2.13.2
 CONFIG        := $(CURDIR)/.golangci.yml
 
 MODULES       := . sdk example

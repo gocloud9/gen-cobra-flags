@@ -3,10 +3,12 @@
 //
 // Usage:
 //
-//	gen-cobra-flags -input <dir> -output <dir> -package <name> [-struct <Name>] [-source-import <path>]
+//	gen-cobra-flags -input <dir> -output <dir> [-package <name>] [-struct <Name>] [-source-import <path>]
 //
 // When -output resolves to the same directory as -input, the generated code is
-// emitted into the source package (no source-package import or qualifier).
+// emitted into the source package (no source-package import or qualifier) and
+// -package is optional: the package name is derived from the input directory.
+// When -output differs from -input, -package is required.
 // It is typically invoked via a //go:generate directive.
 package main
 
@@ -22,7 +24,7 @@ func main() {
 	var (
 		input        = flag.String("input", ".", "directory to parse for annotated structs")
 		output       = flag.String("output", ".", "directory to write generated files to")
-		pkg          = flag.String("package", "", "package name for the generated files (required)")
+		pkg          = flag.String("package", "", "package name for the generated files (optional when input and output are the same directory)")
 		structName   = flag.String("struct", "", "restrict generation to a single struct (default: all annotated structs)")
 		sourceImport = flag.String("source-import", "", "import path of the package containing the source structs")
 	)

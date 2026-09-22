@@ -81,11 +81,11 @@ type Request struct {
 
 	// 3. Invoke the CLI exactly as a //go:generate directive would, in
 	// same-package mode so the output lands beside the source struct.
+	// -package is omitted intentionally: the generator derives it from the
+	// input directory when input and output are the same.
 	gen := exec.Command(bin,
 		"-input", ".",
 		"-output", ".",
-		"-package", pkgName,
-		"-same-package",
 	)
 	gen.Dir = pkgDir
 	if out, err := gen.CombinedOutput(); err != nil {

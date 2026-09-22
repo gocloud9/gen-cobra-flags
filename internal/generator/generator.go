@@ -41,11 +41,9 @@ type Options struct {
 	// package as the source structs, so field types are referenced without
 	// the external package qualifier.
 	//
-	// Callers normally leave this false: Generate auto-detects the
-	// same-package case by comparing the resolved InputDir and OutputDir. When
-	// the generated files are written into the source directory, they share
-	// the source package, so no source-package import or qualifier is emitted.
-	// Setting it true forces same-package behavior regardless of directories.
+	// This is set automatically by Generate when InputDir and OutputDir resolve
+	// to the same directory. It can also be set programmatically to force
+	// same-package behavior regardless of directories.
 	SamePackageAsSource bool
 
 	// SourceImport is the import path of the package containing the source
@@ -64,18 +62,39 @@ func Generate(opts Options) error {
 	if opts.OutputDir == "" {
 		return fmt.Errorf("output directory is required")
 	}
-	if opts.Package == "" {
-		return fmt.Errorf("output package name is required")
-	}
 
 	// Auto-detect the same-package case: when the generated files are written
 	// into the source directory, they share the source package, so no
-	// source-package import or qualifier must be emitted. An explicitly set
-	// SamePackageAsSource still forces same-package behavior.
+	// source-package import or qualifier must be emitted.
 	if same, err := sameDir(opts.InputDir, opts.OutputDir); err != nil {
 		return fmt.Errorf("comparing input and output directories: %w", err)
 	} else if same {
 		opts.SamePackageAsSource = true
+	}
+
+	// When output differs from input, package is required.
+	if opts.Package == "" && !opts.SamePackageAsSource {
+		return fmt.Errorf("output package name is required when input and output directories differ (pass -package)")
+	}
+
+	parser := parse.Parser{}
+	results, err := parser.ParseDirectory(parse.Options{
+		Path: opts.InputDir,
+		SkipFilesWithContentsRegex: []*regexp.Regexp{
+			regexp.MustCompile("Generated Code with gen-cobra-flags - Do Not Edit"),
+		},
+	})
+	if err != nil {
+		return fmt.Errorf("parsing input directory %q: %w", opts.InputDir, err)
+	}
+
+	// Same-package mode: derive the package name from the input directory's
+	// parsed package when the caller did not supply one explicitly.
+	if opts.Package == "" && opts.SamePackageAsSource {
+		opts.Package = sourcePackageName(results)
+		if opts.Package == "" {
+			return fmt.Errorf("could not derive package name from input directory %q; pass -package explicitly", opts.InputDir)
+		}
 	}
 
 	// For the cross-package case, the generated To<Struct> methods reference
@@ -91,18 +110,6 @@ func Generate(opts Options) error {
 	}
 
 	g := &gen{opts: opts}
-
-	parser := parse.Parser{}
-	results, err := parser.ParseDirectory(parse.Options{
-		Path: opts.InputDir,
-		SkipFilesWithContentsRegex: []*regexp.Regexp{
-			regexp.MustCompile("Generated Code with gen-cobra-flags - Do Not Edit"),
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("parsing input directory %q: %w", opts.InputDir, err)
-	}
-
 	g.results = results
 
 	// Selection is driven by the +cobra:enabled marker (replacing the former
@@ -645,7 +652,7 @@ func deriveSourceImport(dir string) (string, error) {
 func findModule(dir string) (modRoot, modPath string, err error) {
 	for {
 		goMod := filepath.Join(dir, "go.mod")
-		if data, readErr := os.ReadFile(goMod); readErr == nil {
+		if data, readErr := os.ReadFile(goMod); readErr == nil { //nolint:gosec // path is derived from go.mod discovery, not user input
 			mp := modulePath(data)
 			if mp == "" {
 				return "", "", fmt.Errorf("go.mod at %q has no module directive", goMod)

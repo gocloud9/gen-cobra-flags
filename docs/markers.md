@@ -20,12 +20,13 @@ marked `+cobra:enabled` is generated, along with any child structs pulled in by
 enabled struct in a package:
 
 ```
-//go:generate gen-cobra-flags -input ./ -output ./ -package types
+//go:generate gen-cobra-flags -input ./ -output ./
 ```
 
 When `-output` resolves to the same directory as `-input`, the generated code is emitted into
-the source package, so no source-package import or qualifier is produced. When generating into
-a different directory, the source package's import path is derived automatically from the input
+the source package, so no source-package import or qualifier is produced, and `-package` is
+optional (derived from the input directory). When generating into
+a different directory, `-package` is required, and the source package's import path is derived automatically from the input
 directory's Go module (override it with `-source-import` if needed).
 
 For backward compatibility, if no struct in the package declares `+cobra:enabled`, selection

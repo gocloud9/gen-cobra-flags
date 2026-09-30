@@ -19,6 +19,11 @@ MODULES       := . sdk example
 CMD           := ./cmd/gen-cobra-flags
 BINARY        := bin/gen-cobra-flags
 
+# Version string embedded into the CLI binary (see cmd/gen-cobra-flags/main.go).
+# Falls back to the current commit hash when not building from a tag.
+VERSION       ?= $(shell git describe --tags --always --dirty 2>/dev/null || echo dev)
+LDFLAGS       := -X main.version=$(VERSION)
+
 # Parameters used to regenerate the example fixture's output.
 EXAMPLE_DIR    := $(CURDIR)/example
 EXAMPLE_OUT    := $(EXAMPLE_DIR)/generated
@@ -35,11 +40,11 @@ help: ## Show this help.
 
 .PHONY: build
 build: ## Build the gen-cobra-flags CLI binary into ./bin.
-	$(GO) build -o $(BINARY) $(CMD)
+	$(GO) build -ldflags "$(LDFLAGS)" -o $(BINARY) $(CMD)
 
 .PHONY: install
 install: ## Install the CLI into $(GOBIN).
-	$(GO) install $(CMD)
+	$(GO) install -ldflags "$(LDFLAGS)" $(CMD)
 
 .PHONY: test
 test: ## Run tests across all modules.

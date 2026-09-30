@@ -93,6 +93,7 @@ gen-cobra-flags [flags]
 | `-package`       | —       | Package name for the generated files. Optional when `-input` and `-output` are the same directory (derived from the input package); required otherwise. |
 | `-struct`        | (all)   | Restrict generation to a single struct. Defaults to all annotated.   |
 | `-source-import` | (derived) | Import path of the package containing the source structs. Auto-derived from the input directory's Go module when generating into a different package; set it to override the derived value. |
+| `-version`       | `false` | Print the `gen-cobra-flags` version and exit.                       |
 
 When `-output` resolves to the same directory as `-input`, the generated code is emitted into
 the source package, so no source-package import or qualifier is produced, and `-package` is

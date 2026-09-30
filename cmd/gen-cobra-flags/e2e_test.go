@@ -102,6 +102,36 @@ type Request struct {
 	runGoIn(t, mod, "build", "./...")
 }
 
+// TestCLI_Version builds the CLI with an injected version (mirroring
+// `make build`) and verifies `-version` prints it.
+func TestCLI_Version(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping end-to-end CLI test in -short mode")
+	}
+
+	root := repoRoot(t)
+	tmp := t.TempDir()
+
+	bin := filepath.Join(tmp, "gen-cobra-flags")
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
+	build := exec.Command("go", "build", "-ldflags", "-X main.version=v9.9.9", "-o", bin, "./cmd/gen-cobra-flags")
+	build.Dir = root
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("building CLI failed: %v\n%s", err, out)
+	}
+
+	out, err := exec.Command(bin, "-version").CombinedOutput()
+	if err != nil {
+		t.Fatalf("running CLI -version failed: %v\n%s", err, out)
+	}
+	got := strings.TrimSpace(string(out))
+	if got != "v9.9.9" {
+		t.Fatalf("gen-cobra-flags -version = %q, want %q", got, "v9.9.9")
+	}
+}
+
 func repoRoot(t *testing.T) string {
 	t.Helper()
 	// cmd/gen-cobra-flags -> repo root is two levels up.
